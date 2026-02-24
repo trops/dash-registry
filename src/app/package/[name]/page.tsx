@@ -1,5 +1,6 @@
 import { getAllPackages, getPackageByName } from "@/lib/registry";
 import { WidgetList } from "@/components/WidgetList";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -23,12 +24,12 @@ export default function PackageDetailPage({
         <div className="max-w-4xl mx-auto px-6 py-12">
             {/* Breadcrumb */}
             <div className="mb-6">
-                <a
+                <Link
                     href="/"
                     className="text-sm text-dash-accent hover:underline"
                 >
                     &larr; Back to Registry
-                </a>
+                </Link>
             </div>
 
             {/* Deprecation Banner */}

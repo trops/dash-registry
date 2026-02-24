@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Package } from "@/lib/registry";
 
 interface PackageCardProps {
@@ -24,7 +25,7 @@ function getIcon(icon?: string): string {
 
 export function PackageCard({ pkg }: PackageCardProps) {
     return (
-        <a
+        <Link
             href={`/package/${pkg.name}`}
             className="block p-5 rounded-lg bg-dash-surface border border-dash-border hover:border-dash-accent/50 transition-all hover:shadow-lg hover:shadow-dash-accent/5 group"
         >
@@ -74,6 +75,6 @@ export function PackageCard({ pkg }: PackageCardProps) {
                     {pkg.widgets.length !== 1 ? "s" : ""}
                 </span>
             </div>
-        </a>
+        </Link>
     );
 }
