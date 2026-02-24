@@ -30,7 +30,7 @@ export default function SubmitPage() {
                             <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text">
                                 <code>
                                     gh repo create my-widgets --template
-                                    trops/dash
+                                    trops/dash-electron
                                 </code>
                             </div>
                         </div>
