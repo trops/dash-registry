@@ -1,0 +1,31 @@
+{
+    "name": "dash-registry",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Widget registry and marketplace for Dash",
+    "scripts": {
+        "dev": "npm run build-index && next dev",
+        "build": "npm run build-index && next build",
+        "start": "next start",
+        "build-index": "node scripts/build-index.js",
+        "lint": "next lint",
+        "validate": "node scripts/validate-packages.js"
+    },
+    "dependencies": {
+        "fuse.js": "^7.0.0",
+        "next": "^14.2.0",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/react": "^18.2.0",
+        "@types/react-dom": "^18.2.0",
+        "autoprefixer": "^10.4.0",
+        "eslint": "^8.57.1",
+        "eslint-config-next": "^14.2.35",
+        "postcss": "^8.4.0",
+        "tailwindcss": "^3.4.0",
+        "typescript": "^5.4.0"
+    }
+}
