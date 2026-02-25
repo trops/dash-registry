@@ -1,0 +1,86 @@
+{
+  "scope": "trops",
+  "name": "dash-samples",
+  "displayName": "Dash Samples",
+  "author": "John P. Giatropoulos",
+  "description": "A Dashboard Generator",
+  "version": "0.0.59",
+  "category": "general",
+  "tags": [],
+  "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/dash-electron-v{version}.zip",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-02-25T12:45:39.750Z",
+  "widgets": [
+    {
+      "name": "SampleEventReceiverWidget",
+      "displayName": "Title",
+      "description": "Demonstrates event listening via useWidgetEvents().listen().",
+      "icon": "inbox",
+      "providers": []
+    },
+    {
+      "name": "SampleEventSenderWidget",
+      "displayName": "Title",
+      "description": "Demonstrates event publishing via useWidgetEvents().publishEvent().",
+      "icon": "paper-plane",
+      "providers": []
+    },
+    {
+      "name": "SampleGitHubWidget",
+      "displayName": "Title",
+      "description": "Demonstrates GitHub MCP provider — search repos, list issues.",
+      "icon": "github",
+      "providers": [
+        {
+          "type": "github",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SampleGmailWidget",
+      "displayName": "Title",
+      "description": "Demonstrates Gmail MCP provider — search and read emails.",
+      "icon": "envelope",
+      "providers": [
+        {
+          "type": "gmail",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SampleNotepadWidget",
+      "displayName": "Title",
+      "description": "Demonstrates widget data persistence with storeData/readData.",
+      "icon": "sticky-note",
+      "providers": []
+    },
+    {
+      "name": "SampleReaderWidget",
+      "displayName": "Title",
+      "description": "Listens for noteSaved events from SampleNotepadWidget and displays received notes.",
+      "icon": "book-open",
+      "providers": []
+    },
+    {
+      "name": "SampleSlackWidget",
+      "displayName": "Title",
+      "description": "Demonstrates Slack MCP provider — list channels, send messages.",
+      "icon": "slack",
+      "providers": [
+        {
+          "type": "slack",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SampleThemeViewerWidget",
+      "displayName": "Title",
+      "description": "Demonstrates ThemeContext and useDashboard hook.",
+      "icon": "palette",
+      "providers": []
+    }
+  ]
+}

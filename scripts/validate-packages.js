@@ -21,6 +21,7 @@ const PASCAL_CASE = /^[A-Z][a-zA-Z0-9]+$/;
 const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
 const VALID_CATEGORIES = [
+    "general",
     "utilities",
     "productivity",
     "development",
