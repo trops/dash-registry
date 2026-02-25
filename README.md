@@ -2,7 +2,7 @@
 
 Widget marketplace for the [Dash](https://github.com/trops/dash) Electron dashboard app. Browse, discover, and install community-built widgets.
 
-**Live site:** Deployed to GitHub Pages via the `deploy.yml` workflow on push to `main`.
+**Live site:** [trops.github.io/dash-registry](https://trops.github.io/dash-registry/) — deployed to GitHub Pages via the `deploy.yml` workflow on push to `main`.
 
 ## Tech Stack
 
