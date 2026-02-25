@@ -108,53 +108,21 @@ export default function SubmitPage() {
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
-                                Create a release
-                            </h2>
-                            <p className="text-dash-muted text-sm mb-3">
-                                Push a version tag to trigger the GitHub Action
-                                that builds and uploads a distributable ZIP to
-                                your release.
-                            </p>
-                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
-                                <div>
-                                    <code>npm run bump</code>
-                                </div>
-                                <div>
-                                    <code>
-                                        git add . &amp;&amp; git commit -m
-                                        &quot;v1.0.0&quot;
-                                    </code>
-                                </div>
-                                <div>
-                                    <code>git tag v1.0.0 &amp;&amp; git push --tags</code>
-                                </div>
-                            </div>
-                            <p className="text-dash-muted text-xs mt-2">
-                                Or create the ZIP locally with{" "}
-                                <code className="text-dash-text">
-                                    npm run package-zip
-                                </code>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Step 4 */}
-                <div className="p-6 rounded-lg bg-dash-surface border border-dash-border">
-                    <div className="flex items-start space-x-4">
-                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-dash-accent flex items-center justify-center text-white font-bold text-sm">
-                            4
-                        </span>
-                        <div>
-                            <h2 className="text-lg font-semibold text-white mb-2">
                                 Publish to the registry
                             </h2>
                             <p className="text-dash-muted text-sm mb-3">
-                                Run the publish script to auto-generate a
-                                manifest and open a PR to the registry.
+                                Run the publish script — it builds a release,
+                                uploads the ZIP, generates a manifest, and opens
+                                a PR to the registry, all in one command.
                             </p>
-                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text">
-                                <code>npm run publish-to-registry</code>
+                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
+                                <div>
+                                    <code>npm run publish-to-registry</code>
+                                </div>
+                                <div className="text-dash-muted"># or specify a custom package name</div>
+                                <div>
+                                    <code>npm run publish-to-registry -- --name my-widgets</code>
+                                </div>
                             </div>
                             <p className="text-dash-muted text-xs mt-2">
                                 Requires{" "}
@@ -166,7 +134,10 @@ export default function SubmitPage() {
                                 >
                                     gh CLI
                                 </a>{" "}
-                                installed and authenticated. Use{" "}
+                                installed and authenticated. Your scope is
+                                auto-detected from{" "}
+                                <code className="text-dash-text">gh</code>.
+                                Use{" "}
                                 <code className="text-dash-text">--dry-run</code>{" "}
                                 to preview the manifest without opening a PR.
                             </p>
@@ -174,11 +145,11 @@ export default function SubmitPage() {
                     </div>
                 </div>
 
-                {/* Step 5 */}
+                {/* Step 4 */}
                 <div className="p-6 rounded-lg bg-dash-surface border border-dash-border">
                     <div className="flex items-start space-x-4">
                         <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-sm">
-                            5
+                            4
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
@@ -213,6 +184,7 @@ export default function SubmitPage() {
                     <pre className="text-sm text-dash-text font-mono">
 {`{
   "name": "my-widgets",
+  "scope": "yourname",
   "displayName": "My Widgets",
   "author": "Your Name",
   "description": "A collection of useful widgets",
@@ -262,6 +234,15 @@ export default function SubmitPage() {
                                 <td className="py-2 pr-4">Yes</td>
                                 <td className="py-2">
                                     Unique package identifier (kebab-case)
+                                </td>
+                            </tr>
+                            <tr className="border-b border-dash-border/50">
+                                <td className="py-2 pr-4 font-mono text-xs">
+                                    scope
+                                </td>
+                                <td className="py-2 pr-4">Yes</td>
+                                <td className="py-2">
+                                    GitHub username (lowercase)
                                 </td>
                             </tr>
                             <tr className="border-b border-dash-border/50">

@@ -6,10 +6,10 @@ Widget registry and marketplace for Dash. Built with Next.js 14, React 18, TypeS
 
 ## Project Structure
 
-- `packages/` — Widget package manifests (JSON files)
+- `packages/` — Scoped widget package manifests (`packages/{scope}/{name}/manifest.json`)
 - `scripts/` — Build and validation scripts (`build-index.js`, `validate-packages.js`)
 - `src/` — Next.js app source code
-- `public/` — Static assets including generated `index.json`
+- `public/` — Static assets including generated `registry-index.json`
 
 ## Commands
 

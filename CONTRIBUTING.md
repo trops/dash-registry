@@ -4,9 +4,9 @@ Thanks for your interest in contributing a widget package to the Dash Registry!
 
 ## Adding a New Package
 
-1. **Create a directory** under `packages/` with your package name in kebab-case:
+1. **Create a directory** under `packages/{scope}/{name}/` where scope is your GitHub username (lowercase):
    ```
-   packages/my-widgets/
+   packages/yourname/my-widgets/
    ```
 
 2. **Create a `manifest.json`** in that directory following the schema below.
@@ -22,6 +22,7 @@ Thanks for your interest in contributing a widget package to the Dash Registry!
 | Field | Type | Rules |
 |-------|------|-------|
 | `name` | `string` | Kebab-case, 2–50 chars, must match directory name |
+| `scope` | `string` | GitHub username (lowercase), must match scope directory |
 | `displayName` | `string` | Non-empty, max 100 chars |
 | `version` | `string` | Valid semver (e.g., `1.0.0`, `2.1.0-beta`) |
 | `downloadUrl` | `string` | HTTPS URL (may contain `{version}` and `{name}` placeholders) |
@@ -33,7 +34,7 @@ Thanks for your interest in contributing a widget package to the Dash Registry!
 |-------|------|-------|
 | `author` | `string` | Max 100 chars |
 | `description` | `string` | Max 500 chars |
-| `category` | `string` | One of: `utilities`, `productivity`, `development`, `social`, `media`, `finance`, `health`, `education`, `other` |
+| `category` | `string` | One of: `general`, `utilities`, `productivity`, `development`, `social`, `media`, `finance`, `health`, `education`, `other` |
 | `tags` | `string[]` | Max 10 items, each lowercase, max 30 chars |
 | `repository` | `string` | HTTPS URL |
 | `publishedAt` | `string` | ISO 8601 date (e.g., `2026-01-15T10:00:00Z`) |
@@ -57,6 +58,7 @@ Each entry in the `widgets` array:
 ```json
 {
     "name": "my-widgets",
+    "scope": "yourname",
     "displayName": "My Widgets",
     "author": "Your Name",
     "description": "A collection of useful widgets.",
@@ -97,7 +99,7 @@ Add `"deprecated": true` and optionally `"deprecatedMessage"` to your `manifest.
 
 To fully remove a package from the registry:
 
-1. Open a PR that deletes the entire `packages/{your-package-name}/` directory
+1. Open a PR that deletes the entire `packages/{scope}/{name}/` directory
 2. In the PR description, state that you are the original author
 3. A maintainer will verify and merge
 
@@ -112,9 +114,10 @@ All URLs (`downloadUrl`, `repository`) must:
 
 ## Naming Rules
 
+- **Scope**: Your GitHub username, lowercase (e.g., `yourname`)
 - **Package name**: kebab-case (`my-cool-widgets`), 2–50 characters
 - **Widget name**: PascalCase (`MyCoolWidget`)
-- No duplicate package names across the registry
+- No duplicate package names within a scope
 - No duplicate widget names within a package
 
 ## Local Validation
