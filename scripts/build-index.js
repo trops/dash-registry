@@ -25,39 +25,48 @@ function main() {
         return;
     }
 
-    const entries = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
+    const scopeDirs = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true })
+        .filter((e) => e.isDirectory());
 
-    for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
+    for (const scopeDir of scopeDirs) {
+        const scopePath = path.join(PACKAGES_DIR, scopeDir.name);
+        const pkgDirs = fs.readdirSync(scopePath, { withFileTypes: true })
+            .filter((e) => e.isDirectory());
 
-        const manifestPath = path.join(PACKAGES_DIR, entry.name, "manifest.json");
-        if (!fs.existsSync(manifestPath)) {
-            console.warn(`Skipping ${entry.name}: no manifest.json`);
-            continue;
-        }
-
-        try {
-            const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-
-            // Validate required fields
-            if (!manifest.name) {
-                console.warn(`Skipping ${entry.name}: missing 'name' field`);
+        for (const pkgDir of pkgDirs) {
+            const manifestPath = path.join(scopePath, pkgDir.name, "manifest.json");
+            if (!fs.existsSync(manifestPath)) {
+                console.warn(`Skipping ${scopeDir.name}/${pkgDir.name}: no manifest.json`);
                 continue;
             }
 
-            if (!manifest.downloadUrl) {
-                console.warn(`Warning: ${entry.name} has no downloadUrl`);
-            }
+            try {
+                const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 
-            packages.push(manifest);
-            console.log(`  + ${manifest.name} v${manifest.version || "?"} (${(manifest.widgets || []).length} widgets)`);
-        } catch (error) {
-            console.error(`Error parsing ${manifestPath}:`, error.message);
+                // Validate required fields
+                if (!manifest.name) {
+                    console.warn(`Skipping ${scopeDir.name}/${pkgDir.name}: missing 'name' field`);
+                    continue;
+                }
+
+                if (!manifest.downloadUrl) {
+                    console.warn(`Warning: ${scopeDir.name}/${pkgDir.name} has no downloadUrl`);
+                }
+
+                packages.push(manifest);
+                console.log(`  + ${manifest.scope || scopeDir.name}/${manifest.name} v${manifest.version || "?"} (${(manifest.widgets || []).length} widgets)`);
+            } catch (error) {
+                console.error(`Error parsing ${manifestPath}:`, error.message);
+            }
         }
     }
 
-    // Sort packages alphabetically
-    packages.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    // Sort packages alphabetically by scope/name
+    packages.sort((a, b) => {
+        const aKey = `${a.scope || ""}/${a.name || ""}`;
+        const bKey = `${b.scope || ""}/${b.name || ""}`;
+        return aKey.localeCompare(bKey);
+    });
 
     writeIndex(packages);
 }

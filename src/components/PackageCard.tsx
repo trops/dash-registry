@@ -26,7 +26,7 @@ function getIcon(icon?: string): string {
 export function PackageCard({ pkg }: PackageCardProps) {
     return (
         <Link
-            href={`/package/${pkg.name}`}
+            href={`/package/${pkg.scope}/${pkg.name}`}
             className="block p-5 rounded-lg bg-dash-surface border border-dash-border hover:border-dash-accent/50 transition-all hover:shadow-lg hover:shadow-dash-accent/5 group"
         >
             <div className="flex items-start justify-between mb-3">

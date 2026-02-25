@@ -47,7 +47,7 @@ function isValidUrl(str) {
 
 // ── Per-manifest validation ──────────────────────────────────────────
 
-function validateManifest(manifest, dirName, filePath) {
+function validateManifest(manifest, scopeDirName, pkgDirName, filePath) {
     const errors = [];
     const warnings = [];
 
@@ -56,6 +56,20 @@ function validateManifest(manifest, dirName, filePath) {
     }
     function warn(msg) {
         warnings.push(`WARN:  ${filePath}: ${msg}`);
+    }
+
+    // scope
+    if (!manifest.scope) {
+        err('"scope" is required');
+    } else if (typeof manifest.scope !== "string") {
+        err('"scope" must be a string');
+    } else {
+        if (!KEBAB_CASE.test(manifest.scope)) {
+            err(`"scope" must be kebab-case (got "${manifest.scope}")`);
+        }
+        if (manifest.scope !== scopeDirName) {
+            err(`"scope" must match scope directory name (got "${manifest.scope}", directory is "${scopeDirName}")`);
+        }
     }
 
     // name
@@ -71,8 +85,8 @@ function validateManifest(manifest, dirName, filePath) {
             if (!KEBAB_CASE.test(manifest.name)) {
                 err(`"name" must be kebab-case (got "${manifest.name}")`);
             }
-            if (manifest.name !== dirName) {
-                err(`"name" must match directory name (got "${manifest.name}", directory is "${dirName}")`);
+            if (manifest.name !== pkgDirName) {
+                err(`"name" must match directory name (got "${manifest.name}", directory is "${pkgDirName}")`);
             }
         }
     }
@@ -245,67 +259,76 @@ function main() {
         process.exit(0);
     }
 
-    const entries = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true });
-    const dirs = entries.filter((e) => e.isDirectory());
+    const scopeDirs = fs.readdirSync(PACKAGES_DIR, { withFileTypes: true })
+        .filter((e) => e.isDirectory());
 
-    if (dirs.length === 0) {
-        console.log("No package directories found. Nothing to validate.");
+    if (scopeDirs.length === 0) {
+        console.log("No scope directories found. Nothing to validate.");
         process.exit(0);
     }
 
     let totalErrors = 0;
     let totalWarnings = 0;
-    const allPackageNames = new Set();
+    let totalPackages = 0;
+    const allScopedNames = new Set();
 
-    for (const dir of dirs) {
-        const manifestPath = path.join(PACKAGES_DIR, dir.name, "manifest.json");
-        const relPath = `packages/${dir.name}/manifest.json`;
+    for (const scopeDir of scopeDirs) {
+        const scopePath = path.join(PACKAGES_DIR, scopeDir.name);
+        const pkgDirs = fs.readdirSync(scopePath, { withFileTypes: true })
+            .filter((e) => e.isDirectory());
 
-        if (!fs.existsSync(manifestPath)) {
-            console.log(`  \u2717 ${dir.name}`);
-            console.log(`    ERROR: ${relPath} not found`);
-            totalErrors++;
-            continue;
-        }
+        for (const pkgDir of pkgDirs) {
+            totalPackages++;
+            const manifestPath = path.join(scopePath, pkgDir.name, "manifest.json");
+            const relPath = `packages/${scopeDir.name}/${pkgDir.name}/manifest.json`;
 
-        let manifest;
-        try {
-            manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-        } catch (e) {
-            console.log(`  \u2717 ${dir.name}`);
-            console.log(`    ERROR: ${relPath}: invalid JSON — ${e.message}`);
-            totalErrors++;
-            continue;
-        }
-
-        const { errors, warnings } = validateManifest(manifest, dir.name, relPath);
-
-        // Cross-package: duplicate name check
-        if (manifest.name) {
-            if (allPackageNames.has(manifest.name)) {
-                errors.push(`ERROR: ${relPath}: duplicate package name "${manifest.name}"`);
-            } else {
-                allPackageNames.add(manifest.name);
+            if (!fs.existsSync(manifestPath)) {
+                console.log(`  \u2717 ${scopeDir.name}/${pkgDir.name}`);
+                console.log(`    ERROR: ${relPath} not found`);
+                totalErrors++;
+                continue;
             }
-        }
 
-        if (errors.length === 0) {
-            const widgetCount = Array.isArray(manifest.widgets) ? manifest.widgets.length : 0;
-            const deprecatedTag = manifest.deprecated ? " [DEPRECATED]" : "";
-            console.log(`  \u2713 ${dir.name} (${widgetCount} widget${widgetCount !== 1 ? "s" : ""})${deprecatedTag}`);
-        } else {
-            console.log(`  \u2717 ${dir.name}`);
-        }
+            let manifest;
+            try {
+                manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+            } catch (e) {
+                console.log(`  \u2717 ${scopeDir.name}/${pkgDir.name}`);
+                console.log(`    ERROR: ${relPath}: invalid JSON — ${e.message}`);
+                totalErrors++;
+                continue;
+            }
 
-        for (const e of errors) {
-            console.log(`    ${e}`);
-        }
-        for (const w of warnings) {
-            console.log(`    ${w}`);
-        }
+            const { errors, warnings } = validateManifest(manifest, scopeDir.name, pkgDir.name, relPath);
 
-        totalErrors += errors.length;
-        totalWarnings += warnings.length;
+            // Cross-package: duplicate scope/name check
+            if (manifest.scope && manifest.name) {
+                const scopedName = `${manifest.scope}/${manifest.name}`;
+                if (allScopedNames.has(scopedName)) {
+                    errors.push(`ERROR: ${relPath}: duplicate scoped package name "${scopedName}"`);
+                } else {
+                    allScopedNames.add(scopedName);
+                }
+            }
+
+            if (errors.length === 0) {
+                const widgetCount = Array.isArray(manifest.widgets) ? manifest.widgets.length : 0;
+                const deprecatedTag = manifest.deprecated ? " [DEPRECATED]" : "";
+                console.log(`  \u2713 ${scopeDir.name}/${pkgDir.name} (${widgetCount} widget${widgetCount !== 1 ? "s" : ""})${deprecatedTag}`);
+            } else {
+                console.log(`  \u2717 ${scopeDir.name}/${pkgDir.name}`);
+            }
+
+            for (const e of errors) {
+                console.log(`    ${e}`);
+            }
+            for (const w of warnings) {
+                console.log(`    ${w}`);
+            }
+
+            totalErrors += errors.length;
+            totalWarnings += warnings.length;
+        }
     }
 
     console.log("");
@@ -314,14 +337,14 @@ function main() {
         console.log(
             `${totalErrors} error${totalErrors !== 1 ? "s" : ""}, ` +
             `${totalWarnings} warning${totalWarnings !== 1 ? "s" : ""} ` +
-            `in ${dirs.length} package${dirs.length !== 1 ? "s" : ""}`
+            `in ${totalPackages} package${totalPackages !== 1 ? "s" : ""}`
         );
         process.exit(1);
     }
 
     console.log(
         `0 errors, ${totalWarnings} warning${totalWarnings !== 1 ? "s" : ""} ` +
-        `in ${dirs.length} package${dirs.length !== 1 ? "s" : ""}`
+        `in ${totalPackages} package${totalPackages !== 1 ? "s" : ""}`
     );
     process.exit(0);
 }
