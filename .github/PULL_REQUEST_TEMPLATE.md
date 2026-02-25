@@ -6,8 +6,8 @@
 
 If you're adding or updating a package, please verify:
 
-- [ ] `manifest.json` is in `packages/{package-name}/manifest.json`
-- [ ] Package `name` is kebab-case and matches the directory name
+- [ ] `manifest.json` is in `packages/{scope}/{name}/manifest.json`
+- [ ] Package `name` is kebab-case and matches the directory name under `packages/{scope}/`
 - [ ] `version` is valid semver
 - [ ] `downloadUrl` is a valid HTTPS URL
 - [ ] `widgets` array is non-empty with valid entries

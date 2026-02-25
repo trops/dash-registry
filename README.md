@@ -24,16 +24,19 @@ npm run dev
 |---------|-------------|
 | `npm run dev` | Start dev server (builds index first) |
 | `npm run build` | Production build to `out/` |
+| `npm run check` | Full validation pipeline: validate + lint + build |
 | `npm run validate` | Validate all package manifests |
 | `npm run lint` | Run Next.js linter |
 | `npm run build-index` | Aggregate manifests into `public/registry-index.json` |
+| `npm run create-project -- <name> [WidgetName]` | Scaffold a new widget project from the Dash template |
 
 ## Project Structure
 
 ```
-packages/              # One directory per widget package
-  my-widgets/
-    manifest.json      # Package manifest (schema in CONTRIBUTING.md)
+packages/              # Scoped widget package manifests
+  trops/               # Scope (GitHub username)
+    dash-samples/
+      manifest.json    # Package manifest (schema in CONTRIBUTING.md)
 scripts/
   build-index.js       # Aggregates manifests → registry-index.json
   validate-packages.js # Manifest validation (runs in CI)
