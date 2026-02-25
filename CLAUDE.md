@@ -2,6 +2,8 @@
 
 Widget registry and marketplace for Dash. Built with Next.js 14, React 18, TypeScript, and Tailwind CSS.
 
+**Live site:** https://trops.github.io/dash-registry/
+
 ## Project Structure
 
 - `packages/` — Widget package manifests (JSON files)
