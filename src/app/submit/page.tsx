@@ -20,19 +20,48 @@ export default function SubmitPage() {
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
-                                Create a repo from the Dash template
+                                Create a new widget project
                             </h2>
                             <p className="text-dash-muted text-sm mb-3">
-                                Start by creating a new repository from the Dash
-                                template. This gives you the full widget
-                                development environment.
+                                The quickest way to get started is with the{" "}
+                                <code className="text-dash-text">create-project</code>{" "}
+                                script. It creates a GitHub repo from the Dash
+                                template, configures your package, installs
+                                dependencies, and optionally scaffolds your first
+                                widget — all in one command.
                             </p>
-                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text">
-                                <code>
-                                    gh repo create my-widgets --template
-                                    trops/dash-electron
-                                </code>
+                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
+                                <div className="text-dash-muted"># from the dash-registry directory</div>
+                                <div>
+                                    <code>
+                                        npm run create-project -- my-widgets MyWidget
+                                    </code>
+                                </div>
                             </div>
+                            <p className="text-dash-muted text-xs mt-2">
+                                Requires{" "}
+                                <a
+                                    href="https://cli.github.com/"
+                                    className="text-dash-accent hover:underline"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    gh CLI
+                                </a>{" "}
+                                installed and authenticated. The widget name is
+                                optional — you can scaffold widgets later in step 2.
+                            </p>
+                            <details className="mt-3">
+                                <summary className="text-dash-muted text-xs cursor-pointer hover:text-dash-text">
+                                    Or create the repo manually
+                                </summary>
+                                <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text mt-2">
+                                    <code>
+                                        gh repo create my-widgets --template
+                                        trops/dash-electron --public --clone
+                                    </code>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 </div>
@@ -50,6 +79,9 @@ export default function SubmitPage() {
                             <p className="text-dash-muted text-sm mb-3">
                                 Use the widgetize script to scaffold new
                                 widgets, then develop and test them locally.
+                                If you already scaffolded a widget in step 1,
+                                skip straight to{" "}
+                                <code className="text-dash-text">npm run dev</code>.
                             </p>
                             <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
                                 <div>
