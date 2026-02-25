@@ -15,6 +15,7 @@ export interface Widget {
 }
 
 export interface Package {
+    scope: string;
     name: string;
     displayName: string;
     author: string;
@@ -52,6 +53,10 @@ export function getAllPackages(): Package[] {
 
 export function getPackageByName(name: string): Package | undefined {
     return getAllPackages().find((pkg) => pkg.name === name);
+}
+
+export function getPackageByScope(scope: string, name: string): Package | undefined {
+    return getAllPackages().find((pkg) => pkg.scope === scope && pkg.name === name);
 }
 
 export function getAllCategories(): string[] {
