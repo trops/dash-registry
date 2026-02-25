@@ -9,7 +9,9 @@
         "start": "next start",
         "build-index": "node scripts/build-index.js",
         "lint": "next lint",
-        "validate": "node scripts/validate-packages.js"
+        "validate": "node scripts/validate-packages.js",
+        "check": "npm run validate && npm run lint && npm run build",
+        "preversion": "npm run check"
     },
     "dependencies": {
         "fuse.js": "^7.0.0",
