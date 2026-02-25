@@ -18,6 +18,7 @@ Widget registry and marketplace for Dash. Built with Next.js 14, React 18, TypeS
 - `npm run lint` — ESLint
 - `npm run build` — Build index and Next.js site
 - `npm run dev` — Local dev server
+- `npm run create-project -- <name> [WidgetName]` — Scaffold a new widget project from the dash-electron template
 
 ## Automation Cycle
 

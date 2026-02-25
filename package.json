@@ -11,7 +11,8 @@
         "lint": "next lint",
         "validate": "node scripts/validate-packages.js",
         "check": "npm run validate && npm run lint && npm run build",
-        "preversion": "npm run check"
+        "preversion": "npm run check",
+        "create-project": "node scripts/create-project.js"
     },
     "dependencies": {
         "fuse.js": "^7.0.0",
