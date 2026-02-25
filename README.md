@@ -32,7 +32,7 @@ npm run dev
 
 ```
 packages/              # One directory per widget package
-  weather-widgets/
+  my-widgets/
     manifest.json      # Package manifest (schema in CONTRIBUTING.md)
 scripts/
   build-index.js       # Aggregates manifests → registry-index.json

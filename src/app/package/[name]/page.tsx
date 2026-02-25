@@ -3,8 +3,16 @@ import { WidgetList } from "@/components/WidgetList";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+export const dynamicParams = false;
+
 export function generateStaticParams() {
-    return getAllPackages().map((pkg) => ({
+    const packages = getAllPackages();
+    if (packages.length === 0) {
+        // Next.js static export requires at least one param for dynamic routes.
+        // Return a placeholder that resolves to notFound() at render time.
+        return [{ name: "_" }];
+    }
+    return packages.map((pkg) => ({
         name: pkg.name,
     }));
 }
