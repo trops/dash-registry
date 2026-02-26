@@ -1,6 +1,6 @@
 {
     "name": "dash-registry",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "private": true,
     "description": "Widget registry and marketplace for Dash",
     "scripts": {
