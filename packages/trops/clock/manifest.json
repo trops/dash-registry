@@ -1,0 +1,47 @@
+{
+  "githubUser": "trops",
+  "name": "clock",
+  "displayName": "Clock",
+  "author": "John P. Giatropoulos",
+  "description": "A Dashboard Generator",
+  "version": "0.0.73",
+  "category": "general",
+  "tags": [],
+  "downloadUrl": "https://github.com/trops/dash-registry/releases/download/trops--clock--v{version}/dash-widgets-clock-v{version}.zip",
+  "repository": "https://github.com/trops/dash-widgets-clock",
+  "publishedAt": "2026-03-02T03:20:31.641Z",
+  "widgets": [
+    {
+      "id": "trops.clock.AnalogClockWidget",
+      "name": "AnalogClockWidget",
+      "displayName": "Analog Clock",
+      "description": "Classic circular clock face with hour, minute, and second hands.",
+      "icon": "clock",
+      "providers": []
+    },
+    {
+      "id": "trops.clock.DigitalClockWidget",
+      "name": "DigitalClockWidget",
+      "displayName": "Digital Clock",
+      "description": "Bold digital time display with optional blinking colon, date, and AM/PM badge.",
+      "icon": "stopwatch",
+      "providers": []
+    },
+    {
+      "id": "trops.clock.FlipClockWidget",
+      "name": "FlipClockWidget",
+      "displayName": "Flip Clock",
+      "description": "Retro split-flap style clock with dark cards and horizontal dividers.",
+      "icon": "layer-group",
+      "providers": []
+    },
+    {
+      "id": "trops.clock.MinimalTextClockWidget",
+      "name": "MinimalTextClockWidget",
+      "displayName": "Minimal Text Clock",
+      "description": "Spells out the time in natural English with optional greeting and numeric reference.",
+      "icon": "quote-left",
+      "providers": []
+    }
+  ]
+}
