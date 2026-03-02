@@ -13,7 +13,7 @@ export function generateStaticParams() {
         return [{ scope: "_", name: "_" }];
     }
     return packages.map((pkg) => ({
-        scope: pkg.scope,
+        scope: pkg.githubUser || pkg.scope,
         name: pkg.name,
     }));
 }
