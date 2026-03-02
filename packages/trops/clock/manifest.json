@@ -4,12 +4,12 @@
   "displayName": "Clock",
   "author": "John P. Giatropoulos",
   "description": "A Dashboard Generator",
-  "version": "0.0.77",
+  "version": "0.0.78",
   "category": "general",
   "tags": [],
   "downloadUrl": "https://github.com/trops/dash-registry/releases/download/trops--clock--v{version}/dash-widgets-clock-v{version}.zip",
   "repository": "https://github.com/trops/dash-widgets-clock",
-  "publishedAt": "2026-03-02T17:33:30.736Z",
+  "publishedAt": "2026-03-02T17:54:15.030Z",
   "widgets": [
     {
       "id": "trops.clock.AnalogClockWidget",
