@@ -67,8 +67,11 @@ function main() {
         }
 
         packages.push(manifest);
+        const pkgType = manifest.type || "widget";
+        const itemCount = (manifest.widgets || []).length;
+        const itemLabel = pkgType === "dashboard" ? "deps" : "widgets";
         console.log(
-          `  + ${manifest.githubUser || manifest.scope || scopeDir.name}/${manifest.name} v${manifest.version || "?"} (${(manifest.widgets || []).length} widgets)`,
+          `  + ${manifest.githubUser || manifest.scope || scopeDir.name}/${manifest.name} v${manifest.version || "?"} [${pkgType}] (${itemCount} ${itemLabel})`,
         );
       } catch (error) {
         console.error(`Error parsing ${manifestPath}:`, error.message);
