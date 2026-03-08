@@ -1,16 +1,45 @@
-import { getPackageByScope } from "@/lib/registry";
 import { WidgetList } from "@/components/WidgetList";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Package } from "@/lib/registry";
 
 export const dynamic = "force-dynamic";
 
-export default function PackageDetailPage({
+interface PackageVersion {
+    version: string;
+    createdAt: string;
+    fileSize?: number;
+}
+
+interface PackageDetail extends Package {
+    versions?: PackageVersion[];
+}
+
+async function fetchPackageDetail(
+    scope: string,
+    name: string,
+): Promise<PackageDetail | null> {
+    const baseUrl = process.env.REGISTRY_BASE_URL || "http://localhost:3000";
+    try {
+        const res = await fetch(`${baseUrl}/api/packages/${scope}/${name}`, {
+            cache: "no-store",
+        });
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        return await res.json();
+    } catch {
+        // Fallback to static registry
+        const { getPackageByScope } = await import("@/lib/registry");
+        return getPackageByScope(scope, name) || null;
+    }
+}
+
+export default async function PackageDetailPage({
     params,
 }: {
     params: { scope: string; name: string };
 }) {
-    const pkg = getPackageByScope(params.scope, params.name);
+    const pkg = await fetchPackageDetail(params.scope, params.name);
 
     if (!pkg) {
         notFound();
@@ -33,7 +62,9 @@ export default function PackageDetailPage({
                 <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
                     <div className="flex items-center gap-2 text-yellow-400">
                         <span className="text-lg">&#9888;</span>
-                        <span className="font-semibold">This package is deprecated</span>
+                        <span className="font-semibold">
+                            This package is deprecated
+                        </span>
                     </div>
                     {pkg.deprecatedMessage && (
                         <p className="text-sm text-yellow-400/80 mt-1 ml-7">
@@ -56,7 +87,7 @@ export default function PackageDetailPage({
                         </p>
                     </div>
                     <span className="text-sm px-3 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted">
-                        v{pkg.version}
+                        v{pkg.latestVersion || pkg.version}
                     </span>
                 </div>
 
@@ -65,7 +96,7 @@ export default function PackageDetailPage({
                 </p>
 
                 {/* Tags */}
-                {pkg.tags.length > 0 && (
+                {pkg.tags && pkg.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-4">
                         {pkg.tags.map((tag) => (
                             <span
@@ -86,24 +117,74 @@ export default function PackageDetailPage({
                 </h2>
                 <p className="text-sm text-dash-muted mb-3">
                     This package is available in the Dash app&apos;s Discover
-                    tab. You can also install it manually:
+                    tab. You can also install it directly from the registry.
                 </p>
-                <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text overflow-x-auto">
-                    <code>
-                        {pkg.downloadUrl
-                            .replace(/\{version\}/g, pkg.version)
-                            .replace(/\{name\}/g, pkg.name)}
-                    </code>
-                </div>
+                {pkg.downloadUrl && (
+                    <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text overflow-x-auto">
+                        <code>
+                            {pkg.downloadUrl
+                                .replace(
+                                    /\{version\}/g,
+                                    pkg.latestVersion || pkg.version,
+                                )
+                                .replace(/\{name\}/g, pkg.name)}
+                        </code>
+                    </div>
+                )}
             </div>
 
+            {/* Version History */}
+            {pkg.versions && pkg.versions.length > 0 && (
+                <div className="mb-8">
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        Version History
+                    </h2>
+                    <div className="space-y-2">
+                        {pkg.versions.map((v) => (
+                            <div
+                                key={v.version}
+                                className="flex items-center justify-between p-3 rounded-lg bg-dash-bg border border-dash-border"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-mono text-white">
+                                        v{v.version}
+                                    </span>
+                                    {v.version ===
+                                        (pkg.latestVersion || pkg.version) && (
+                                        <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/30">
+                                            latest
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4 text-xs text-dash-muted">
+                                    {v.fileSize && (
+                                        <span>
+                                            {(v.fileSize / 1024).toFixed(1)} KB
+                                        </span>
+                                    )}
+                                    {v.createdAt && (
+                                        <span>
+                                            {new Date(
+                                                v.createdAt,
+                                            ).toLocaleDateString()}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Widgets */}
-            <div className="mb-8">
-                <h2 className="text-lg font-semibold text-white mb-4">
-                    Included Widgets ({pkg.widgets.length})
-                </h2>
-                <WidgetList widgets={pkg.widgets} />
-            </div>
+            {pkg.widgets && pkg.widgets.length > 0 && (
+                <div className="mb-8">
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        Included Widgets ({pkg.widgets.length})
+                    </h2>
+                    <WidgetList widgets={pkg.widgets} />
+                </div>
+            )}
 
             {/* Links */}
             <div className="flex gap-4">
