@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-08T07:29:40.019Z",
+  "lastUpdated": "2026-03-08T15:14:02.890Z",
   "packages": [
     {
       "githubUser": "trops",
@@ -69,36 +69,40 @@
       "publishedAt": "2026-03-08T00:00:00.000Z",
       "widgets": [
         {
-          "id": "trops.clock.AnalogClockWidget",
           "name": "AnalogClockWidget",
+          "displayName": "Analog Clock",
+          "description": "Classic analog clock with hour, minute, and second hands",
+          "icon": "clock",
           "package": "clock",
           "version": "^0.0.73",
-          "required": true,
-          "author": "John P. Giatropoulos"
+          "required": true
         },
         {
-          "id": "trops.clock.DigitalClockWidget",
           "name": "DigitalClockWidget",
+          "displayName": "Digital Clock",
+          "description": "Digital clock display with configurable format",
+          "icon": "clock",
           "package": "clock",
           "version": "^0.0.73",
-          "required": true,
-          "author": "John P. Giatropoulos"
+          "required": true
         },
         {
-          "id": "trops.clock.FlipClockWidget",
           "name": "FlipClockWidget",
+          "displayName": "Flip Clock",
+          "description": "Retro flip-style clock with animated digit transitions",
+          "icon": "clock",
           "package": "clock",
           "version": "^0.0.73",
-          "required": true,
-          "author": "John P. Giatropoulos"
+          "required": true
         },
         {
-          "id": "trops.clock.MinimalTextClockWidget",
           "name": "MinimalTextClockWidget",
+          "displayName": "Minimal Text Clock",
+          "description": "Minimalist text-based time display",
+          "icon": "clock",
           "package": "clock",
           "version": "^0.0.73",
-          "required": true,
-          "author": "John P. Giatropoulos"
+          "required": true
         }
       ],
       "providers": [],
