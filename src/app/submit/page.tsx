@@ -6,8 +6,8 @@ export default function SubmitPage() {
             </h1>
 
             <p className="text-dash-muted mb-8 text-lg">
-                Share your widgets with the Dash community. Follow the steps
-                below to publish your widget package to the registry.
+                Share your widgets and dashboards with the Dash community.
+                Publishing is now built directly into the Dash app.
             </p>
 
             {/* Step-by-step guide */}
@@ -20,48 +20,20 @@ export default function SubmitPage() {
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
-                                Create a new widget project
+                                Create a registry account
                             </h2>
                             <p className="text-dash-muted text-sm mb-3">
-                                The quickest way to get started is with the{" "}
-                                <code className="text-dash-text">create-project</code>{" "}
-                                script. It creates a GitHub repo from the Dash
-                                template, configures your package, installs
-                                dependencies, and optionally scaffolds your first
-                                widget — all in one command.
+                                Sign up with your email, GitHub, or Google
+                                account. Choose a unique username — this becomes
+                                your scope for all published packages (e.g.,{" "}
+                                <code className="text-dash-text">@yourname/my-widgets</code>).
                             </p>
-                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
-                                <div className="text-dash-muted"># from the dash-registry directory</div>
-                                <div>
-                                    <code>
-                                        npm run create-project -- my-widgets MyWidget
-                                    </code>
-                                </div>
-                            </div>
-                            <p className="text-dash-muted text-xs mt-2">
-                                Requires{" "}
-                                <a
-                                    href="https://cli.github.com/"
-                                    className="text-dash-accent hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    gh CLI
-                                </a>{" "}
-                                installed and authenticated. The widget name is
-                                optional — you can scaffold widgets later in step 2.
-                            </p>
-                            <details className="mt-3">
-                                <summary className="text-dash-muted text-xs cursor-pointer hover:text-dash-text">
-                                    Or create the repo manually
-                                </summary>
-                                <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text mt-2">
-                                    <code>
-                                        gh repo create my-widgets --template
-                                        trops/dash-electron --public --clone
-                                    </code>
-                                </div>
-                            </details>
+                            <a
+                                href="/account"
+                                className="inline-flex items-center px-4 py-2 rounded-lg bg-dash-accent text-white text-sm hover:bg-dash-accent/80 transition-colors"
+                            >
+                                Sign Up / Sign In
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -77,23 +49,22 @@ export default function SubmitPage() {
                                 Build your widgets
                             </h2>
                             <p className="text-dash-muted text-sm mb-3">
-                                Use the widgetize script to scaffold new
-                                widgets, then develop and test them locally.
-                                If you already scaffolded a widget in step 1,
-                                skip straight to{" "}
-                                <code className="text-dash-text">npm run dev</code>.
+                                Create a widget project and develop your
+                                widgets locally. Use the{" "}
+                                <code className="text-dash-text">
+                                    create-project
+                                </code>{" "}
+                                script to get started quickly.
                             </p>
                             <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
-                                <div>
-                                    <code>npm run setup</code>
+                                <div className="text-dash-muted">
+                                    # from the dash-registry directory
                                 </div>
                                 <div>
                                     <code>
-                                        node scripts/widgetize MyWidget
+                                        npm run create-project -- my-widgets
+                                        MyWidget
                                     </code>
-                                </div>
-                                <div>
-                                    <code>npm run dev</code>
                                 </div>
                             </div>
                         </div>
@@ -108,38 +79,22 @@ export default function SubmitPage() {
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
-                                Publish to the registry
+                                Publish from the Dash app
                             </h2>
                             <p className="text-dash-muted text-sm mb-3">
-                                Run the publish script — it builds a release,
-                                uploads the ZIP, generates a manifest, and opens
-                                a PR to the registry, all in one command.
+                                In the Dash app, open the dashboard you want
+                                to publish and click{" "}
+                                <strong className="text-white">
+                                    Publish Dashboard
+                                </strong>{" "}
+                                in the workspace settings. Fill in the
+                                details, and your dashboard will be published
+                                directly to the registry.
                             </p>
-                            <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text space-y-1">
-                                <div>
-                                    <code>npm run publish-to-registry</code>
-                                </div>
-                                <div className="text-dash-muted"># or specify a custom package name</div>
-                                <div>
-                                    <code>npm run publish-to-registry -- --name my-widgets</code>
-                                </div>
-                            </div>
-                            <p className="text-dash-muted text-xs mt-2">
-                                Requires{" "}
-                                <a
-                                    href="https://cli.github.com/"
-                                    className="text-dash-accent hover:underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    gh CLI
-                                </a>{" "}
-                                installed and authenticated. Your scope is
-                                auto-detected from{" "}
-                                <code className="text-dash-text">gh</code>.
-                                Use{" "}
-                                <code className="text-dash-text">--dry-run</code>{" "}
-                                to preview the manifest without opening a PR.
+                            <p className="text-dash-muted text-sm">
+                                If you&apos;re not signed in, the app will
+                                guide you through connecting your registry
+                                account using a simple device code flow.
                             </p>
                         </div>
                     </div>
@@ -153,12 +108,13 @@ export default function SubmitPage() {
                         </span>
                         <div>
                             <h2 className="text-lg font-semibold text-white mb-2">
-                                Done!
+                                Share your link
                             </h2>
                             <p className="text-dash-muted text-sm">
-                                Once your PR is merged, your widgets will appear
-                                in the Dash app&apos;s Discover tab for all users to
-                                install.
+                                After publishing, you&apos;ll get a shareable
+                                registry link. Your widgets will also appear
+                                in the Dash app&apos;s Discover tab for all
+                                users to install.
                             </p>
                         </div>
                     </div>
@@ -175,9 +131,9 @@ export default function SubmitPage() {
                     <code className="text-dash-text bg-dash-surface px-1 rounded">
                         manifest.json
                     </code>{" "}
-                    file describes your package and its widgets. The publish
-                    script generates this automatically, but you can also create
-                    it manually.
+                    file describes your package and its widgets. The Dash app
+                    generates this automatically when you publish, but you can
+                    also create it manually for widget packages.
                 </p>
 
                 <div className="bg-dash-surface rounded-lg border border-dash-border p-5 overflow-x-auto">
@@ -191,8 +147,6 @@ export default function SubmitPage() {
   "version": "1.0.0",
   "category": "utilities",
   "tags": ["example", "demo"],
-  "downloadUrl": "https://github.com/you/my-widgets/releases/download/v{version}/my-widgets-v{version}.zip",
-  "repository": "https://github.com/you/my-widgets",
   "widgets": [
     {
       "name": "MyWidget",
@@ -242,7 +196,7 @@ export default function SubmitPage() {
                                 </td>
                                 <td className="py-2 pr-4">Yes</td>
                                 <td className="py-2">
-                                    GitHub username (lowercase)
+                                    Your registry username
                                 </td>
                             </tr>
                             <tr className="border-b border-dash-border/50">
@@ -261,16 +215,6 @@ export default function SubmitPage() {
                                 <td className="py-2 pr-4">Yes</td>
                                 <td className="py-2">
                                     Semver version string
-                                </td>
-                            </tr>
-                            <tr className="border-b border-dash-border/50">
-                                <td className="py-2 pr-4 font-mono text-xs">
-                                    downloadUrl
-                                </td>
-                                <td className="py-2 pr-4">Yes</td>
-                                <td className="py-2">
-                                    URL to ZIP file. Supports {"{version}"} and
-                                    {" {name}"} placeholders.
                                 </td>
                             </tr>
                             <tr className="border-b border-dash-border/50">

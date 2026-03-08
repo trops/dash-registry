@@ -37,6 +37,12 @@ export default function RootLayout({
                             >
                                 Publish
                             </Link>
+                            <Link
+                                href="/account"
+                                className="text-dash-muted hover:text-white transition-colors"
+                            >
+                                Account
+                            </Link>
                             <a
                                 href="https://github.com/trops/dash"
                                 target="_blank"
