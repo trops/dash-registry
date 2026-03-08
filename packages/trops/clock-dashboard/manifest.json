@@ -1,0 +1,51 @@
+{
+  "githubUser": "trops",
+  "name": "clock-dashboard",
+  "displayName": "Clock Dashboard",
+  "author": "John P. Giatropoulos",
+  "description": "Pre-built dashboard featuring all four clock widgets in a grid layout with event wiring.",
+  "version": "1.0.0",
+  "type": "dashboard",
+  "category": "general",
+  "tags": ["clock", "time", "dashboard"],
+  "icon": "clock",
+  "downloadUrl": "https://github.com/trops/dash-registry/releases/download/trops--clock-dashboard--v{version}/clock-dashboard-v{version}.zip",
+  "repository": "https://github.com/trops/dash-registry",
+  "publishedAt": "2026-03-08T00:00:00.000Z",
+  "widgets": [
+    {
+      "id": "trops.clock.AnalogClockWidget",
+      "name": "AnalogClockWidget",
+      "package": "clock",
+      "version": "^0.0.73",
+      "required": true,
+      "author": "John P. Giatropoulos"
+    },
+    {
+      "id": "trops.clock.DigitalClockWidget",
+      "name": "DigitalClockWidget",
+      "package": "clock",
+      "version": "^0.0.73",
+      "required": true,
+      "author": "John P. Giatropoulos"
+    },
+    {
+      "id": "trops.clock.FlipClockWidget",
+      "name": "FlipClockWidget",
+      "package": "clock",
+      "version": "^0.0.73",
+      "required": true,
+      "author": "John P. Giatropoulos"
+    },
+    {
+      "id": "trops.clock.MinimalTextClockWidget",
+      "name": "MinimalTextClockWidget",
+      "package": "clock",
+      "version": "^0.0.73",
+      "required": true,
+      "author": "John P. Giatropoulos"
+    }
+  ],
+  "providers": [],
+  "eventWiring": []
+}

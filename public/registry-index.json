@@ -1,7 +1,109 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-02-25T14:21:14.172Z",
+  "lastUpdated": "2026-03-08T07:29:40.019Z",
   "packages": [
+    {
+      "githubUser": "trops",
+      "name": "clock",
+      "displayName": "Clock",
+      "author": "John P. Giatropoulos",
+      "description": "A Dashboard Generator",
+      "version": "0.0.78",
+      "category": "general",
+      "tags": [],
+      "downloadUrl": "https://github.com/trops/dash-registry/releases/download/trops--clock--v{version}/dash-widgets-clock-v{version}.zip",
+      "repository": "https://github.com/trops/dash-widgets-clock",
+      "publishedAt": "2026-03-02T17:54:15.030Z",
+      "widgets": [
+        {
+          "id": "trops.clock.AnalogClockWidget",
+          "name": "AnalogClockWidget",
+          "displayName": "Analog Clock",
+          "description": "Classic circular clock face with hour, minute, and second hands.",
+          "icon": "clock",
+          "providers": []
+        },
+        {
+          "id": "trops.clock.DigitalClockWidget",
+          "name": "DigitalClockWidget",
+          "displayName": "Digital Clock",
+          "description": "Bold digital time display with optional blinking colon, date, and AM/PM badge.",
+          "icon": "stopwatch",
+          "providers": []
+        },
+        {
+          "id": "trops.clock.FlipClockWidget",
+          "name": "FlipClockWidget",
+          "displayName": "Flip Clock",
+          "description": "Retro split-flap style clock with dark cards and horizontal dividers.",
+          "icon": "layer-group",
+          "providers": []
+        },
+        {
+          "id": "trops.clock.MinimalTextClockWidget",
+          "name": "MinimalTextClockWidget",
+          "displayName": "Minimal Text Clock",
+          "description": "Spells out the time in natural English with optional greeting and numeric reference.",
+          "icon": "quote-left",
+          "providers": []
+        }
+      ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "clock-dashboard",
+      "displayName": "Clock Dashboard",
+      "author": "John P. Giatropoulos",
+      "description": "Pre-built dashboard featuring all four clock widgets in a grid layout with event wiring.",
+      "version": "1.0.0",
+      "type": "dashboard",
+      "category": "general",
+      "tags": [
+        "clock",
+        "time",
+        "dashboard"
+      ],
+      "icon": "clock",
+      "downloadUrl": "https://github.com/trops/dash-registry/releases/download/trops--clock-dashboard--v{version}/clock-dashboard-v{version}.zip",
+      "repository": "https://github.com/trops/dash-registry",
+      "publishedAt": "2026-03-08T00:00:00.000Z",
+      "widgets": [
+        {
+          "id": "trops.clock.AnalogClockWidget",
+          "name": "AnalogClockWidget",
+          "package": "clock",
+          "version": "^0.0.73",
+          "required": true,
+          "author": "John P. Giatropoulos"
+        },
+        {
+          "id": "trops.clock.DigitalClockWidget",
+          "name": "DigitalClockWidget",
+          "package": "clock",
+          "version": "^0.0.73",
+          "required": true,
+          "author": "John P. Giatropoulos"
+        },
+        {
+          "id": "trops.clock.FlipClockWidget",
+          "name": "FlipClockWidget",
+          "package": "clock",
+          "version": "^0.0.73",
+          "required": true,
+          "author": "John P. Giatropoulos"
+        },
+        {
+          "id": "trops.clock.MinimalTextClockWidget",
+          "name": "MinimalTextClockWidget",
+          "package": "clock",
+          "version": "^0.0.73",
+          "required": true,
+          "author": "John P. Giatropoulos"
+        }
+      ],
+      "providers": [],
+      "eventWiring": []
+    },
     {
       "scope": "trops",
       "name": "dash-samples",
@@ -85,6 +187,33 @@
           "description": "Demonstrates ThemeContext and useDashboard hook.",
           "icon": "palette",
           "providers": []
+        }
+      ]
+    },
+    {
+      "scope": "trops",
+      "name": "gong",
+      "displayName": "Gong",
+      "author": "John P. Giatropoulos",
+      "description": "A Dashboard Generator",
+      "version": "0.0.111",
+      "category": "general",
+      "tags": [],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/gong-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-05T17:55:22.136Z",
+      "widgets": [
+        {
+          "name": "GongWidget",
+          "displayName": "GongWidget",
+          "description": "Browse Gong call transcripts and AI-generated summaries.",
+          "icon": "phone",
+          "providers": [
+            {
+              "type": "gong",
+              "required": true
+            }
+          ]
         }
       ]
     }
