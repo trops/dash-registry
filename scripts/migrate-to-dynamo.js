@@ -128,6 +128,7 @@ async function migrate() {
                 visibility: "public",
                 ownerId: "migration", // placeholder until users claim
                 downloadUrl: manifest.downloadUrl || "",
+                widgets: manifest.widgets || [],
                 createdAt: manifest.publishedAt || now,
                 updatedAt: now,
             };
@@ -136,6 +137,7 @@ async function migrate() {
             const versionRecord = {
                 packageScope: scope,
                 packageName: name,
+                sk: `${name}#${manifest.version}`,
                 version: manifest.version,
                 downloadUrl: manifest.downloadUrl || "",
                 manifest: manifest,
