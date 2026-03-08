@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
             visibility: "public",
             ownerId: token.sub,
             downloadUrl,
+            widgets: manifest.widgets || [],
             createdAt: existing?.createdAt || now,
         });
 

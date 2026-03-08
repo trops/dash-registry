@@ -26,10 +26,17 @@ export async function GET(request: NextRequest) {
             return aKey.localeCompare(bKey);
         });
 
+        // Normalize: add `version` alias of `latestVersion` so dash-core
+        // code that reads pkg.version works unchanged.
+        const normalizedPackages = packages.map((pkg) => ({
+            ...pkg,
+            version: pkg.latestVersion,
+        }));
+
         return NextResponse.json({
             version: "2.0.0",
             lastUpdated: new Date().toISOString(),
-            packages,
+            packages: normalizedPackages,
         });
     } catch (err) {
         console.error("[API /packages] Error:", err);
