@@ -1,22 +1,9 @@
-import { getAllPackages, getPackageByScope } from "@/lib/registry";
+import { getPackageByScope } from "@/lib/registry";
 import { WidgetList } from "@/components/WidgetList";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-    const packages = getAllPackages();
-    if (packages.length === 0) {
-        // Next.js static export requires at least one param for dynamic routes.
-        // Return a placeholder that resolves to notFound() at render time.
-        return [{ scope: "_", name: "_" }];
-    }
-    return packages.map((pkg) => ({
-        scope: pkg.githubUser || pkg.scope,
-        name: pkg.name,
-    }));
-}
+export const dynamic = "force-dynamic";
 
 export default function PackageDetailPage({
     params,

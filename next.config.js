@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    output: "export",
-    basePath: "/dash-registry",
-    assetPrefix: "/dash-registry/",
+    // Removed output: "export" — now uses server-side rendering on Amplify
+    // Removed basePath/assetPrefix — no longer deployed to GitHub Pages subpath
     images: {
         unoptimized: true,
     },
