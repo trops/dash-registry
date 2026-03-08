@@ -6,3 +6,23 @@ body {
     background-color: #0f1117;
     color: #e5e7eb;
 }
+
+/* Override Amplify Authenticator styles for dark theme */
+[data-amplify-authenticator] {
+    --amplify-colors-background-primary: #0f1117;
+    --amplify-colors-background-secondary: #1a1d27;
+    --amplify-colors-border-primary: #2a2d3a;
+    --amplify-colors-font-primary: #e5e7eb;
+    --amplify-colors-font-secondary: #9ca3af;
+}
+
+[data-amplify-authenticator] input {
+    background-color: #0f1117;
+    color: #e5e7eb;
+}
+
+[data-amplify-authenticator] [data-amplify-router] {
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}

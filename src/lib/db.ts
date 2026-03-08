@@ -30,6 +30,8 @@ export const TABLES = {
         "dash-registry-PackageVersions",
     USER_LIBRARY:
         process.env.USER_LIBRARY_TABLE || "dash-registry-UserLibrary",
+    DEVICE_CODES:
+        process.env.DEVICE_CODES_TABLE || "dash-registry-DeviceCodes",
 };
 
 // --- User operations ---
@@ -163,10 +165,11 @@ export async function listPackages(filters?: {
 
 export async function putPackageVersion(version: Record<string, unknown>) {
     const now = new Date().toISOString();
+    const sk = `${version.packageName}#${version.version}`;
     await docClient.send(
         new PutCommand({
             TableName: TABLES.PACKAGE_VERSIONS,
-            Item: { ...version, createdAt: now },
+            Item: { ...version, sk, createdAt: now },
         }),
     );
 }
@@ -176,10 +179,10 @@ export async function getPackageVersions(scope: string, name: string) {
         new QueryCommand({
             TableName: TABLES.PACKAGE_VERSIONS,
             KeyConditionExpression:
-                "packageScope = :scope AND packageName = :name",
+                "packageScope = :scope AND begins_with(sk, :namePrefix)",
             ExpressionAttributeValues: {
                 ":scope": scope,
-                ":name": name,
+                ":namePrefix": `${name}#`,
             },
         }),
     );
@@ -190,10 +193,11 @@ export async function getPackageVersions(scope: string, name: string) {
 
 export async function putUserLibraryEntry(entry: Record<string, unknown>) {
     const now = new Date().toISOString();
+    const sk = `${entry.packageScope}#${entry.packageName}`;
     await docClient.send(
         new PutCommand({
             TableName: TABLES.USER_LIBRARY,
-            Item: { ...entry, updatedAt: now, installedAt: now },
+            Item: { ...entry, sk, updatedAt: now, installedAt: now },
         }),
     );
 }

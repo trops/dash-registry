@@ -2,18 +2,24 @@
  * POST /api/auth/device/authorize
  *
  * Called by the device verification page after the user signs in.
- * Authorizes a pending device code so the Dash app can complete authentication.
- *
- * For Phase 1 (no Cognito UI on the website yet), this endpoint
- * authorizes the device code with a placeholder token.
- * When Amplify auth is deployed, this will require an authenticated session
- * and use the user's real Cognito token.
+ * Authorizes a pending device code with the user's real Cognito JWT
+ * so the Dash app can complete authentication.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { authenticateRequest } from "@/lib/auth";
 import { authorizeDeviceCode } from "@/lib/deviceFlow";
 
 export async function POST(request: NextRequest) {
     try {
+        // Verify the user's Cognito token
+        const token = await authenticateRequest(request);
+        if (!token) {
+            return NextResponse.json(
+                { error: "Authentication required. Please sign in first." },
+                { status: 401 },
+            );
+        }
+
         const body = await request.json();
         const { userCode } = body;
 
@@ -24,17 +30,14 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // TODO: When Amplify auth is deployed on the website, validate the
-        // user's session cookie/token here and use their real Cognito access token.
-        // For Phase 1, we generate a placeholder token that will be used for
-        // subsequent API calls. The registry API validates tokens against Cognito,
-        // so real auth will be enforced at the API level.
+        // Extract the raw JWT to pass through to the Dash app
+        const rawJwt = request.headers.get("Authorization")!.slice(7);
 
-        // Attempt to authorize the device code
-        const authorized = authorizeDeviceCode(
+        // Authorize the device code with the real Cognito token
+        const authorized = await authorizeDeviceCode(
             userCode.trim().toUpperCase(),
-            "phase1-placeholder-token",
-            "phase1-placeholder-user",
+            rawJwt,
+            token.sub,
         );
 
         if (!authorized) {

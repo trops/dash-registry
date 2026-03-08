@@ -8,15 +8,17 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { deviceCodes, cleanupExpired } from "@/lib/deviceFlow";
+import {
+    createDeviceCode,
+    getDeviceCode,
+    deleteDeviceCode,
+} from "@/lib/deviceFlow";
 
 /**
  * POST — Initiate device flow
  * Returns device_code, user_code, and verification URL
  */
 export async function POST() {
-    cleanupExpired();
-
     const deviceCode = uuidv4();
     // Generate a short, human-friendly user code (8 chars, uppercase)
     const userCode = uuidv4().slice(0, 8).toUpperCase();
@@ -24,12 +26,9 @@ export async function POST() {
     const registryBaseUrl =
         process.env.REGISTRY_BASE_URL || "https://registry.trops.dev";
 
-    deviceCodes.set(deviceCode, {
-        userCode,
-        expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
-        interval: 5, // poll every 5 seconds
-        status: "pending",
-    });
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    await createDeviceCode(deviceCode, userCode, expiresAt, 5);
 
     return NextResponse.json({
         device_code: deviceCode,
@@ -56,18 +55,24 @@ export async function GET(request: NextRequest) {
         );
     }
 
-    const entry = deviceCodes.get(deviceCode);
+    const entry = await getDeviceCode(deviceCode);
     if (!entry) {
         return NextResponse.json(
-            { error: "expired_token", error_description: "Device code not found or expired" },
+            {
+                error: "expired_token",
+                error_description: "Device code not found or expired",
+            },
             { status: 400 },
         );
     }
 
     if (Date.now() > entry.expiresAt) {
-        deviceCodes.delete(deviceCode);
+        await deleteDeviceCode(deviceCode);
         return NextResponse.json(
-            { error: "expired_token", error_description: "Device code expired" },
+            {
+                error: "expired_token",
+                error_description: "Device code expired",
+            },
             { status: 400 },
         );
     }
@@ -81,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     if (entry.status === "authorized" && entry.token) {
         // Clean up after successful authorization
-        deviceCodes.delete(deviceCode);
+        await deleteDeviceCode(deviceCode);
 
         return NextResponse.json({
             access_token: entry.token,
