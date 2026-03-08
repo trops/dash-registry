@@ -6,8 +6,8 @@
  * composite sort keys are incompatible with the raw SDK calls in db.ts.
  */
 import { defineBackend } from "@aws-amplify/backend";
-import { auth } from "./auth/resource.js";
-import { storage } from "./storage/resource.js";
+import { auth } from "./auth/resource";
+import { storage } from "./storage/resource";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { RemovalPolicy } from "aws-cdk-lib";
 
