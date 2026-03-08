@@ -71,8 +71,8 @@ export function PackageCard({ pkg }: PackageCardProps) {
                     ))}
                 </div>
                 <span className="text-xs text-dash-muted">
-                    {pkg.widgets.length} widget
-                    {pkg.widgets.length !== 1 ? "s" : ""}
+                    {(pkg.widgets || []).length} widget
+                    {(pkg.widgets || []).length !== 1 ? "s" : ""}
                 </span>
             </div>
         </Link>
