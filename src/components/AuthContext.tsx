@@ -18,6 +18,7 @@ import {
     signOut as amplifySignOut,
     type AuthUser,
 } from "aws-amplify/auth";
+import { Hub } from "aws-amplify/utils";
 
 interface AuthState {
     user: AuthUser | null;
@@ -54,6 +55,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         checkAuth();
+    }, [checkAuth]);
+
+    useEffect(() => {
+        const unsubscribe = Hub.listen("auth", ({ payload }) => {
+            switch (payload.event) {
+                case "signInWithRedirect":
+                case "signedIn":
+                    checkAuth();
+                    break;
+                case "signedOut":
+                    setUser(null);
+                    break;
+                case "signInWithRedirect_failure":
+                    console.error("OAuth sign-in failed:", payload.data);
+                    setUser(null);
+                    setIsLoading(false);
+                    break;
+            }
+        });
+        return unsubscribe;
     }, [checkAuth]);
 
     const signOut = useCallback(async () => {
