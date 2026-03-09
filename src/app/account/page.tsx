@@ -4,8 +4,7 @@
  * Account page — user dashboard with Cognito sign-in/sign-up.
  *
  * Uses the Amplify Authenticator for email/password auth.
- * After sign-in, fetches user profile from /api/auth/me.
- * If no profile exists (new user), shows registration form.
+ * After sign-in, shows profile from AuthContext and published packages.
  */
 import { useState, useEffect, useCallback } from "react";
 import { Authenticator, ThemeProvider } from "@aws-amplify/ui-react";
@@ -75,20 +74,30 @@ const amplifyDarkTheme = {
   },
 };
 
-interface UserProfile {
-  cognitoId: string;
-  username: string;
-  email: string;
-  displayName: string;
-  githubUsername?: string;
-  avatarUrl?: string;
-  createdAt?: string;
+interface PackageItem {
+  scope: string;
+  name: string;
+  displayName?: string;
+  description?: string;
+  version?: string;
+  visibility?: string;
+  category?: string;
+  tags?: string[];
+  updatedAt?: string;
 }
 
 export default function AccountPage() {
-  const { isAuthenticated, isLoading: authLoading, getAccessToken, signOut } = useAuth();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    getAccessToken,
+    signOut,
+    profile,
+    profileLoading,
+    refreshAuth,
+    fetchProfile,
+  } = useAuth();
+
   const [showRegister, setShowRegister] = useState(false);
 
   // Registration form
@@ -98,39 +107,114 @@ export default function AccountPage() {
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
 
-  const fetchProfile = useCallback(async () => {
-    setProfileLoading(true);
+  // Published packages
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [packagesLoading, setPackagesLoading] = useState(false);
+  const [editingPkg, setEditingPkg] = useState<string | null>(null); // "scope/name"
+  const [editForm, setEditForm] = useState<{
+    description: string;
+    category: string;
+    tags: string;
+    visibility: string;
+    displayName: string;
+  }>({
+    description: "",
+    category: "",
+    tags: "",
+    visibility: "",
+    displayName: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Detect if user needs registration (authenticated but no profile)
+  useEffect(() => {
+    if (isAuthenticated && !profileLoading && !profile) {
+      setShowRegister(true);
+    } else {
+      setShowRegister(false);
+    }
+  }, [isAuthenticated, profileLoading, profile]);
+
+  const fetchPackages = useCallback(async () => {
+    setPackagesLoading(true);
     try {
       const token = await getAccessToken();
       if (!token) return;
 
-      const res = await fetch("/api/auth/me", {
+      const res = await fetch("/api/auth/me/packages", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
-        setProfile(data);
-        setShowRegister(false);
-      } else if (res.status === 404) {
-        // User authenticated but not registered — show registration form
-        setShowRegister(true);
+        setPackages(data.packages || []);
       }
     } catch (err) {
-      console.error("Failed to fetch profile:", err);
+      console.error("Failed to fetch packages:", err);
     } finally {
-      setProfileLoading(false);
+      setPackagesLoading(false);
     }
   }, [getAccessToken]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchProfile();
+    if (profile) {
+      fetchPackages();
     } else {
-      setProfile(null);
-      setShowRegister(false);
+      setPackages([]);
     }
-  }, [isAuthenticated, fetchProfile]);
+  }, [profile, fetchPackages]);
+
+  function startEditing(pkg: PackageItem) {
+    const key = `${pkg.scope}/${pkg.name}`;
+    setEditingPkg(key);
+    setEditForm({
+      description: pkg.description || "",
+      category: pkg.category || "",
+      tags: (pkg.tags || []).join(", "),
+      visibility: pkg.visibility || "public",
+      displayName: pkg.displayName || "",
+    });
+  }
+
+  async function saveEdit(pkg: PackageItem) {
+    setSaving(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const updates: Record<string, unknown> = {
+        description: editForm.description,
+        category: editForm.category,
+        tags: editForm.tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        visibility: editForm.visibility,
+        displayName: editForm.displayName,
+      };
+
+      const res = await fetch(`/api/packages/${pkg.scope}/${pkg.name}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (res.ok) {
+        setEditingPkg(null);
+        await fetchPackages();
+      } else {
+        const data = await res.json();
+        console.error("Failed to update:", data.error);
+      }
+    } catch (err) {
+      console.error("Failed to save:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleRegister() {
     if (!username.trim()) {
@@ -166,7 +250,8 @@ export default function AccountPage() {
       }
 
       setRegisterSuccess(true);
-      // Reload profile after registration
+      // Refresh auth to trigger profile refetch
+      await refreshAuth();
       await fetchProfile();
     } catch (err) {
       setRegisterError(
@@ -222,16 +307,186 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-lg bg-dash-surface border border-dash-border">
-              <div className="text-2xl mb-2">&#128230;</div>
-              <h4 className="text-sm font-semibold text-white">
-                Published Packages
-              </h4>
-              <p className="text-xs text-dash-muted mt-1">
-                Publish from the Dash app to see your packages here
+          {/* Published Packages */}
+          <div className="p-6 rounded-lg bg-dash-surface border border-dash-border">
+            <h3 className="text-lg font-semibold text-white mb-4">
+              Published Packages
+            </h3>
+            {packagesLoading ? (
+              <p className="text-sm text-dash-muted">Loading packages...</p>
+            ) : packages.length === 0 ? (
+              <p className="text-sm text-dash-muted">
+                Publish from the Dash app to see your packages here.
               </p>
-            </div>
+            ) : (
+              <div className="space-y-3">
+                {packages.map((pkg) => {
+                  const key = `${pkg.scope}/${pkg.name}`;
+                  const isEditing = editingPkg === key;
+
+                  return (
+                    <div
+                      key={key}
+                      className="p-4 rounded-lg border border-dash-border bg-dash-bg"
+                    >
+                      {isEditing ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs text-dash-muted mb-1">
+                              Display Name
+                            </label>
+                            <input
+                              type="text"
+                              value={editForm.displayName}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  displayName: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-dash-muted mb-1">
+                              Description
+                            </label>
+                            <textarea
+                              value={editForm.description}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  description: e.target.value,
+                                })
+                              }
+                              rows={2}
+                              className="w-full px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent resize-none"
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="flex-1">
+                              <label className="block text-xs text-dash-muted mb-1">
+                                Category
+                              </label>
+                              <input
+                                type="text"
+                                value={editForm.category}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    category: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-xs text-dash-muted mb-1">
+                                Tags (comma-separated)
+                              </label>
+                              <input
+                                type="text"
+                                value={editForm.tags}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    tags: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-dash-muted mb-1">
+                              Visibility
+                            </label>
+                            <select
+                              value={editForm.visibility}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  visibility: e.target.value,
+                                })
+                              }
+                              className="px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
+                            >
+                              <option value="public">Public</option>
+                              <option value="private">Private</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => saveEdit(pkg)}
+                              disabled={saving}
+                              className="px-3 py-1.5 text-sm rounded bg-dash-accent text-white hover:bg-dash-accent/80 transition-colors disabled:opacity-50"
+                            >
+                              {saving ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPkg(null)}
+                              className="px-3 py-1.5 text-sm rounded text-dash-muted hover:text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-white">
+                                {pkg.displayName || pkg.name}
+                              </span>
+                              {pkg.version && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-dash-accent/10 text-dash-accent">
+                                  v{pkg.version}
+                                </span>
+                              )}
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded ${
+                                  pkg.visibility === "private"
+                                    ? "bg-yellow-500/10 text-yellow-400"
+                                    : "bg-green-500/10 text-green-400"
+                                }`}
+                              >
+                                {pkg.visibility || "public"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-dash-muted">
+                              @{pkg.scope}/{pkg.name}
+                            </p>
+                            {pkg.description && (
+                              <p className="text-sm text-dash-muted mt-1">
+                                {pkg.description}
+                              </p>
+                            )}
+                            {pkg.updatedAt && (
+                              <p className="text-xs text-dash-muted/60 mt-2">
+                                Updated{" "}
+                                {new Date(pkg.updatedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => startEditing(pkg)}
+                            className="px-3 py-1.5 text-xs rounded border border-dash-border text-dash-muted hover:text-white hover:border-dash-accent transition-colors flex-shrink-0"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-lg bg-dash-surface border border-dash-border">
               <div className="text-2xl mb-2">&#128203;</div>
               <h4 className="text-sm font-semibold text-white">Library</h4>
