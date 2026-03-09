@@ -307,6 +307,15 @@ export default function AccountPage() {
                 {registering ? "Registering..." : "Register Username"}
               </button>
             </div>
+            <div className="border-t border-dash-border mt-4 pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="px-3 py-1.5 text-sm text-dash-muted hover:text-red-400 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       ) : isAuthenticated && profileLoading ? (
