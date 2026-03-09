@@ -38,7 +38,6 @@ Thumbs.db
 credentials.json
 
 # amplify
-amplify_outputs.json
 .amplify/
 
 # typescript

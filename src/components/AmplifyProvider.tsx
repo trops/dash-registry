@@ -8,7 +8,7 @@
  */
 import { useEffect, useState } from "react";
 import { Amplify } from "aws-amplify";
-import amplifyConfig from "@/lib/amplifyConfig";
+import outputs from "../../amplify_outputs.json";
 
 let configured = false;
 
@@ -21,7 +21,7 @@ export default function AmplifyProvider({
 
     useEffect(() => {
         if (!configured) {
-            Amplify.configure(amplifyConfig, { ssr: true });
+            Amplify.configure(outputs, { ssr: true });
             configured = true;
         }
         setReady(true);
