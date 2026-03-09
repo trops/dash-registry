@@ -107,6 +107,11 @@ export default function AccountPage() {
   const [registerSuccess, setRegisterSuccess] = useState(false);
   const [registering, setRegistering] = useState(false);
 
+  // Profile editing
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
   // Published packages
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
@@ -283,12 +288,83 @@ export default function AccountPage() {
               <div className="w-16 h-16 rounded-full bg-dash-accent/20 flex items-center justify-center text-2xl text-dash-accent">
                 {profile.displayName?.charAt(0).toUpperCase() || "?"}
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  {profile.displayName}
-                </h2>
-                <p className="text-sm text-dash-muted">@{profile.username}</p>
-                <p className="text-xs text-dash-muted mt-1">{profile.email}</p>
+              <div className="flex-1">
+                {editingProfile ? (
+                  <div className="space-y-2">
+                    <label className="block text-xs text-dash-muted">
+                      Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      className="w-full max-w-xs px-3 py-1.5 rounded bg-dash-bg border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={savingProfile || !editDisplayName.trim()}
+                        onClick={async () => {
+                          setSavingProfile(true);
+                          try {
+                            const token = await getAccessToken();
+                            if (!token) return;
+                            const res = await fetch("/api/auth/me", {
+                              method: "PATCH",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${token}`,
+                              },
+                              body: JSON.stringify({
+                                displayName: editDisplayName.trim(),
+                              }),
+                            });
+                            if (res.ok) {
+                              await fetchProfile();
+                              setEditingProfile(false);
+                            }
+                          } finally {
+                            setSavingProfile(false);
+                          }
+                        }}
+                        className="px-3 py-1 text-xs rounded bg-dash-accent text-white hover:bg-dash-accent/80 transition-colors disabled:opacity-50"
+                      >
+                        {savingProfile ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProfile(false)}
+                        className="px-3 py-1 text-xs rounded text-dash-muted hover:text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-semibold text-white">
+                        {profile.displayName}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditDisplayName(profile.displayName || "");
+                          setEditingProfile(true);
+                        }}
+                        className="px-2 py-0.5 text-xs rounded border border-dash-border text-dash-muted hover:text-white hover:border-dash-accent transition-colors"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <p className="text-sm text-dash-muted">
+                      @{profile.username}
+                    </p>
+                    <p className="text-xs text-dash-muted mt-1">
+                      {profile.email}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
             {profile.createdAt && (

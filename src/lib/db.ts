@@ -13,6 +13,11 @@ import {
   ScanCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import outputs from "../../amplify_outputs.json";
+
+const custom = (outputs as Record<string, unknown>).custom as
+  | Record<string, string>
+  | undefined;
 
 const client = new DynamoDBClient({
   region: process.env.AWS_REGION || "us-east-1",
@@ -23,12 +28,23 @@ export const docClient = DynamoDBDocumentClient.from(client, {
 });
 
 export const TABLES = {
-  USERS: process.env.USERS_TABLE || "dash-registry-Users",
-  PACKAGES: process.env.PACKAGES_TABLE || "dash-registry-Packages",
+  USERS: process.env.USERS_TABLE || custom?.usersTable || "dash-registry-Users",
+  PACKAGES:
+    process.env.PACKAGES_TABLE ||
+    custom?.packagesTable ||
+    "dash-registry-Packages",
   PACKAGE_VERSIONS:
-    process.env.PACKAGE_VERSIONS_TABLE || "dash-registry-PackageVersions",
-  USER_LIBRARY: process.env.USER_LIBRARY_TABLE || "dash-registry-UserLibrary",
-  DEVICE_CODES: process.env.DEVICE_CODES_TABLE || "dash-registry-DeviceCodes",
+    process.env.PACKAGE_VERSIONS_TABLE ||
+    custom?.packageVersionsTable ||
+    "dash-registry-PackageVersions",
+  USER_LIBRARY:
+    process.env.USER_LIBRARY_TABLE ||
+    custom?.userLibraryTable ||
+    "dash-registry-UserLibrary",
+  DEVICE_CODES:
+    process.env.DEVICE_CODES_TABLE ||
+    custom?.deviceCodesTable ||
+    "dash-registry-DeviceCodes",
 };
 
 // --- User operations ---
@@ -72,6 +88,40 @@ export async function createUser(user: {
     }),
   );
   return user;
+}
+
+export async function updateUser(
+  cognitoId: string,
+  updates: { displayName?: string; githubUsername?: string },
+) {
+  const now = new Date().toISOString();
+  const expressionParts: string[] = ["#updatedAt = :updatedAt"];
+  const names: Record<string, string> = { "#updatedAt": "updatedAt" };
+  const values: Record<string, unknown> = { ":updatedAt": now };
+
+  for (const [key, val] of Object.entries(updates)) {
+    if (val !== undefined) {
+      const attr = `#${key}`;
+      const placeholder = `:${key}`;
+      expressionParts.push(`${attr} = ${placeholder}`);
+      names[attr] = key;
+      values[placeholder] = val;
+    }
+  }
+
+  if (expressionParts.length === 1) return null; // nothing to update besides timestamp
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLES.USERS,
+      Key: { cognitoId },
+      UpdateExpression: `SET ${expressionParts.join(", ")}`,
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values,
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+  return result.Attributes;
 }
 
 // --- Package operations ---
