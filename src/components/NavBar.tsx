@@ -51,7 +51,7 @@ export default function NavBar() {
                     {!isLoading && isAuthenticated && (
                         <button
                             onClick={() => signOut()}
-                            className="text-dash-muted hover:text-white transition-colors"
+                            className="text-dash-muted hover:text-red-400 border border-dash-border rounded px-2 py-1 transition-colors"
                         >
                             Sign Out
                         </button>

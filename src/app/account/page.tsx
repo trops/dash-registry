@@ -86,7 +86,7 @@ interface UserProfile {
 }
 
 export default function AccountPage() {
-  const { isAuthenticated, isLoading: authLoading, getAccessToken } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, getAccessToken, signOut } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
@@ -211,6 +211,15 @@ export default function AccountPage() {
                 Member since {new Date(profile.createdAt).toLocaleDateString()}
               </p>
             )}
+            <div className="border-t border-dash-border mt-4 pt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="px-3 py-1.5 text-sm text-dash-muted hover:text-red-400 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
