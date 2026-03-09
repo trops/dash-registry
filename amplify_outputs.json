@@ -1,0 +1,84 @@
+{
+  "auth": {
+    "user_pool_id": "us-east-1_oIS59FIu7",
+    "aws_region": "us-east-1",
+    "user_pool_client_id": "1afm8oas1mamk05mbcajkgauin",
+    "identity_pool_id": "us-east-1:d3c66ca4-f198-4ac8-abc6-4f8fe5789de5",
+    "mfa_methods": [],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
+    "groups": [],
+    "mfa_configuration": "NONE",
+    "password_policy": {
+      "min_length": 8,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_symbols": true,
+      "require_uppercase": true
+    },
+    "oauth": {
+      "identity_providers": [
+        "GOOGLE"
+      ],
+      "redirect_sign_in_uri": [
+        "https://main.d919rwhuzp7rj.amplifyapp.com/",
+        "http://localhost:3000/",
+        "http://localhost:3001/"
+      ],
+      "redirect_sign_out_uri": [
+        "https://main.d919rwhuzp7rj.amplifyapp.com/",
+        "http://localhost:3000/",
+        "http://localhost:3001/"
+      ],
+      "response_type": "code",
+      "scopes": [
+        "phone",
+        "email",
+        "openid",
+        "profile",
+        "aws.cognito.signin.user.admin"
+      ],
+      "domain": "d6069e4afd3a4d6d6558.auth.us-east-1.amazoncognito.com"
+    },
+    "unauthenticated_identities_enabled": true
+  },
+  "storage": {
+    "aws_region": "us-east-1",
+    "bucket_name": "amplify-dashregistry-john-dashregistrypackagesbuck-gs03tawpkejz",
+    "buckets": [
+      {
+        "name": "dash-registry-packages",
+        "bucket_name": "amplify-dashregistry-john-dashregistrypackagesbuck-gs03tawpkejz",
+        "aws_region": "us-east-1",
+        "paths": {
+          "packages/*": {
+            "guest": [
+              "get",
+              "list"
+            ],
+            "authenticated": [
+              "get",
+              "list",
+              "write"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "version": "1.4",
+  "custom": {
+    "usersTable": "dash-registry-Users",
+    "packagesTable": "dash-registry-Packages",
+    "packageVersionsTable": "dash-registry-PackageVersions",
+    "userLibraryTable": "dash-registry-UserLibrary",
+    "deviceCodesTable": "dash-registry-DeviceCodes"
+  }
+}
