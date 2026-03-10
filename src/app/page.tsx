@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 async function fetchPackages(): Promise<{
     packages: Package[];
     categories: string[];
+    appOrigins: string[];
 }> {
     const baseUrl = process.env.REGISTRY_BASE_URL || "http://localhost:3000";
     try {
@@ -22,38 +23,58 @@ async function fetchPackages(): Promise<{
                     .filter(Boolean) as string[],
             ),
         ).sort();
-        return { packages, categories };
+        const appOrigins = Array.from(
+            new Set(
+                packages
+                    .map((p: Package) => p.appOrigin)
+                    .filter(Boolean) as string[],
+            ),
+        ).sort();
+        return { packages, categories, appOrigins };
     } catch {
         // Fallback to static registry index if API is unavailable
         const { getAllPackages, getAllCategories } = await import(
             "@/lib/registry"
         );
+        const packages = getAllPackages();
+        const appOrigins = Array.from(
+            new Set(
+                packages
+                    .map((p: Package) => p.appOrigin)
+                    .filter(Boolean) as string[],
+            ),
+        ).sort();
         return {
-            packages: getAllPackages(),
+            packages,
             categories: getAllCategories(),
+            appOrigins,
         };
     }
 }
 
 export default async function HomePage() {
-    const { packages, categories } = await fetchPackages();
+    const { packages, categories, appOrigins } = await fetchPackages();
 
     return (
         <div className="max-w-6xl mx-auto px-6 py-12">
             {/* Hero */}
             <div className="text-center mb-12">
                 <h1 className="text-4xl font-bold text-white mb-3">
-                    Dash Widget Registry
+                    Dash Registry
                 </h1>
                 <p className="text-lg text-dash-muted max-w-2xl mx-auto">
-                    Discover and install widget packages for your Dash
-                    dashboard. Browse community-contributed packages or publish
-                    your own.
+                    Discover and install widgets and dashboards for your Dash
+                    desktop app. Browse community-contributed packages or
+                    publish your own.
                 </p>
             </div>
 
             {/* Search + Grid */}
-            <SearchBar packages={packages} categories={categories} />
+            <SearchBar
+                packages={packages}
+                categories={categories}
+                appOrigins={appOrigins}
+            />
         </div>
     );
 }

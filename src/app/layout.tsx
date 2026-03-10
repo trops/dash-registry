@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import AmplifyProvider from "@/components/AmplifyProvider";
 import { AuthProvider } from "@/components/AuthContext";
+import DeviceReturnHandler from "@/components/DeviceReturnHandler";
 import NavBar from "@/components/NavBar";
 import "@aws-amplify/ui-react/styles.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Dash Widget Registry",
+    title: "Dash Registry",
     description:
-        "Discover and install widget packages for Dash, the Electron dashboard framework.",
+        "Discover and install widgets and dashboards for Dash, the Electron dashboard framework.",
 };
 
 export default function RootLayout({
@@ -22,6 +22,8 @@ export default function RootLayout({
             <body className="min-h-screen bg-dash-bg text-dash-text">
                 <AmplifyProvider>
                     <AuthProvider>
+                        <DeviceReturnHandler />
+
                         {/* Navigation */}
                         <NavBar />
 
@@ -32,7 +34,7 @@ export default function RootLayout({
                         <footer className="border-t border-dash-border mt-16 py-8">
                             <div className="max-w-6xl mx-auto px-6 text-center text-sm text-dash-muted">
                                 <p>
-                                    Dash Widget Registry &mdash; Built with
+                                    Dash Registry &mdash; Built with
                                     Next.js. Open source on{" "}
                                     <a
                                         href="https://github.com/trops/dash-registry"

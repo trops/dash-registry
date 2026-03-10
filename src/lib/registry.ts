@@ -38,6 +38,7 @@ export interface Package {
     deprecated?: boolean;
     deprecatedMessage?: string;
     type?: string;
+    appOrigin?: string;
     latestVersion?: string;
 }
 

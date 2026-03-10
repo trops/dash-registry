@@ -150,41 +150,36 @@ export async function listPackages(filters?: {
   search?: string;
   category?: string;
   type?: string;
+  appOrigin?: string;
 }) {
-  let result;
+  const filterParts: string[] = ["visibility = :vis"];
+  const exprValues: Record<string, string> = { ":vis": "public" };
+  const exprNames: Record<string, string> = {};
 
   if (filters?.category) {
-    result = await docClient.send(
-      new ScanCommand({
-        TableName: TABLES.PACKAGES,
-        FilterExpression: "visibility = :vis AND category = :cat",
-        ExpressionAttributeValues: {
-          ":vis": "public",
-          ":cat": filters.category,
-        },
-      }),
-    );
-  } else if (filters?.type) {
-    result = await docClient.send(
-      new ScanCommand({
-        TableName: TABLES.PACKAGES,
-        FilterExpression: "visibility = :vis AND #t = :type",
-        ExpressionAttributeNames: { "#t": "type" },
-        ExpressionAttributeValues: {
-          ":vis": "public",
-          ":type": filters.type,
-        },
-      }),
-    );
-  } else {
-    result = await docClient.send(
-      new ScanCommand({
-        TableName: TABLES.PACKAGES,
-        FilterExpression: "visibility = :vis",
-        ExpressionAttributeValues: { ":vis": "public" },
-      }),
-    );
+    filterParts.push("category = :cat");
+    exprValues[":cat"] = filters.category;
   }
+  if (filters?.type) {
+    filterParts.push("#t = :type");
+    exprNames["#t"] = "type";
+    exprValues[":type"] = filters.type;
+  }
+  if (filters?.appOrigin) {
+    filterParts.push("appOrigin = :appOrigin");
+    exprValues[":appOrigin"] = filters.appOrigin;
+  }
+
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: TABLES.PACKAGES,
+      FilterExpression: filterParts.join(" AND "),
+      ExpressionAttributeValues: exprValues,
+      ...(Object.keys(exprNames).length > 0 && {
+        ExpressionAttributeNames: exprNames,
+      }),
+    }),
+  );
 
   let packages = result.Items || [];
 
