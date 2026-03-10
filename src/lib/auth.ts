@@ -8,15 +8,24 @@ import { NextRequest } from "next/server";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import outputs from "../../amplify_outputs.json";
 
-const COGNITO_USER_POOL_ID =
-    process.env.COGNITO_USER_POOL_ID || outputs.auth?.user_pool_id || "";
+// Lazy-initialized verifier — avoids build-time validation errors when
+// amplify_outputs.json contains a placeholder User Pool ID.
+let verifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
 
-// Verifier handles JWKS fetching, caching, and RS256 verification internally
-const verifier = CognitoJwtVerifier.create({
-    userPoolId: COGNITO_USER_POOL_ID,
-    tokenUse: null, // accept both "access" and "id" tokens
-    clientId: null, // don't validate clientId
-});
+function getVerifier() {
+    if (!verifier) {
+        const userPoolId =
+            process.env.COGNITO_USER_POOL_ID ||
+            outputs.auth?.user_pool_id ||
+            "";
+        verifier = CognitoJwtVerifier.create({
+            userPoolId,
+            tokenUse: null,
+            clientId: null,
+        });
+    }
+    return verifier;
+}
 
 export interface DecodedToken {
     sub: string;
@@ -44,7 +53,7 @@ export async function authenticateRequest(
     const token = authHeader.slice(7);
 
     try {
-        const payload = await verifier.verify(token);
+        const payload = await getVerifier().verify(token);
         return payload as unknown as DecodedToken;
     } catch (err) {
         console.warn("[Auth] JWT verification failed:", err);
