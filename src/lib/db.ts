@@ -7,6 +7,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
+  DeleteCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -275,6 +276,28 @@ export async function getPackageVersions(scope: string, name: string) {
     }),
   );
   return result.Items || [];
+}
+
+export async function deletePackage(scope: string, name: string) {
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLES.PACKAGES,
+      Key: { scope, name },
+    }),
+  );
+}
+
+export async function deletePackageVersions(scope: string, name: string) {
+  const versions = await getPackageVersions(scope, name);
+  for (const v of versions) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: TABLES.PACKAGE_VERSIONS,
+        Key: { packageScope: scope, sk: v.sk as string },
+      }),
+    );
+  }
+  return versions;
 }
 
 // --- UserLibrary operations ---

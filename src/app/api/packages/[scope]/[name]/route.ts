@@ -1,9 +1,17 @@
 /**
- * GET /api/packages/[scope]/[name]  — public package details + versions
- * PATCH /api/packages/[scope]/[name] — update package metadata (owner only)
+ * GET /api/packages/[scope]/[name]    — public package details + versions
+ * PATCH /api/packages/[scope]/[name]  — update package metadata (owner only)
+ * DELETE /api/packages/[scope]/[name] — delete package + versions + S3 ZIPs (owner only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getPackage, getPackageVersions, updatePackage } from "@/lib/db";
+import {
+  getPackage,
+  getPackageVersions,
+  updatePackage,
+  deletePackage,
+  deletePackageVersions,
+} from "@/lib/db";
+import { deletePackageZip } from "@/lib/s3";
 import { authenticateRequest } from "@/lib/auth";
 
 export async function GET(
@@ -115,6 +123,51 @@ export async function PATCH(
     console.error("[API PATCH /packages/[scope]/[name]] Error:", err);
     return NextResponse.json(
       { error: "Failed to update package" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { scope: string; name: string } },
+) {
+  const token = await authenticateRequest(request);
+  if (!token) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
+  try {
+    const { scope, name } = params;
+
+    const pkg = await getPackage(scope, name);
+    if (!pkg) {
+      return NextResponse.json({ error: "Package not found" }, { status: 404 });
+    }
+
+    if (pkg.ownerId !== token.sub) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    // 1. Delete all version records (and collect version strings for S3 cleanup)
+    const versions = await deletePackageVersions(scope, name);
+
+    // 2. Delete S3 ZIPs for each version
+    for (const v of versions) {
+      await deletePackageZip(scope, name, v.version as string);
+    }
+
+    // 3. Delete the package record
+    await deletePackage(scope, name);
+
+    return NextResponse.json({ deleted: `${scope}/${name}` });
+  } catch (err) {
+    console.error("[API DELETE /packages/[scope]/[name]] Error:", err);
+    return NextResponse.json(
+      { error: "Failed to delete package" },
       { status: 500 },
     );
   }

@@ -7,6 +7,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import outputs from "../../amplify_outputs.json";
@@ -52,6 +53,18 @@ export async function uploadPackageZip(
   );
 
   return key;
+}
+
+/**
+ * Delete a package ZIP from S3.
+ */
+export async function deletePackageZip(
+  scope: string,
+  name: string,
+  version: string,
+): Promise<void> {
+  const key = buildS3Key(scope, name, version);
+  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
 }
 
 /**
