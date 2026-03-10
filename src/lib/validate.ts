@@ -50,6 +50,7 @@ interface Manifest {
   repository?: string;
   type?: string;
   icon?: string;
+  appOrigin?: string;
 }
 
 export interface ValidationResult {
@@ -152,6 +153,14 @@ export function validateManifest(manifest: Manifest): ValidationResult {
 
   if (manifest.description && manifest.description.length > 500) {
     warnings.push('"description" should be at most 500 characters');
+  }
+
+  if (manifest.appOrigin) {
+    if (typeof manifest.appOrigin !== "string") {
+      warnings.push('"appOrigin" should be a string');
+    } else if (manifest.appOrigin.length > 200) {
+      warnings.push('"appOrigin" should be at most 200 characters');
+    }
   }
 
   return {

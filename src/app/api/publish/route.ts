@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
         // 9. Create/update Package record
         const now = new Date().toISOString();
-        await putPackage({
+        const packageRecord: Record<string, unknown> = {
             scope,
             name: manifest.name,
             displayName: manifest.displayName,
@@ -131,10 +131,14 @@ export async function POST(request: NextRequest) {
             downloadUrl,
             widgets: manifest.widgets || [],
             createdAt: existing?.createdAt || now,
-        });
+        };
+        if (manifest.appOrigin) {
+            packageRecord.appOrigin = manifest.appOrigin;
+        }
+        await putPackage(packageRecord);
 
         // 10. Create PackageVersion record
-        await putPackageVersion({
+        const versionRecord: Record<string, unknown> = {
             packageScope: scope,
             packageName: manifest.name,
             version: manifest.version,
@@ -145,7 +149,11 @@ export async function POST(request: NextRequest) {
             eventWiring: manifest.eventWiring || [],
             fileSize: zipBuffer.length,
             ownerId: token.sub,
-        });
+        };
+        if (manifest.appOrigin) {
+            versionRecord.appOrigin = manifest.appOrigin;
+        }
+        await putPackageVersion(versionRecord);
 
         // 11. Return success
         const registryUrl = `${registryBaseUrl}/package/${scope}/${manifest.name}`;
