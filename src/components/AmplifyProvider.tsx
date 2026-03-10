@@ -24,9 +24,20 @@ export default function AmplifyProvider({
             // Clear stale OAuth in-flight state when this isn't an OAuth
             // redirect (no ?code= in URL). Prevents "redirect is coming from
             // a different origin" errors from previous incomplete flows.
-            if (!window.location.search.includes("code=")) {
-                const clientId = outputs.auth.user_pool_client_id;
-                const prefix = `CognitoIdentityServiceProvider.${clientId}`;
+            const params = new URLSearchParams(window.location.search);
+            const isOAuthCallback = params.has("code") && params.has("state");
+            const clientId = outputs.auth.user_pool_client_id;
+            const prefix = `CognitoIdentityServiceProvider.${clientId}`;
+
+            console.log("[AmplifyProvider]", {
+                isOAuthCallback,
+                search: window.location.search.substring(0, 80),
+                inflightOAuth: localStorage.getItem(`${prefix}.inflightOAuth`),
+                oauthState: localStorage.getItem(`${prefix}.oauthState`)?.substring(0, 40),
+                oauthPKCE: !!localStorage.getItem(`${prefix}.oauthPKCE`),
+            });
+
+            if (!isOAuthCallback) {
                 try {
                     localStorage.removeItem(`${prefix}.inflightOAuth`);
                     localStorage.removeItem(`${prefix}.oauthPKCE`);
@@ -42,20 +53,17 @@ export default function AmplifyProvider({
             const redirectSignOut =
                 process.env.NEXT_PUBLIC_REDIRECT_SIGN_OUT || origin;
 
-            Amplify.configure(
-                {
-                    ...outputs,
-                    auth: {
-                        ...outputs.auth,
-                        oauth: {
-                            ...outputs.auth.oauth,
-                            redirect_sign_in_uri: [redirectSignIn],
-                            redirect_sign_out_uri: [redirectSignOut],
-                        },
+            Amplify.configure({
+                ...outputs,
+                auth: {
+                    ...outputs.auth,
+                    oauth: {
+                        ...outputs.auth.oauth,
+                        redirect_sign_in_uri: [redirectSignIn],
+                        redirect_sign_out_uri: [redirectSignOut],
                     },
                 },
-                { ssr: true }
-            );
+            });
             configured = true;
         }
         setReady(true);

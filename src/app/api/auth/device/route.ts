@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     device_code: deviceCode,
     user_code: userCode,
     verification_uri: `${registryBaseUrl}/device`,
-    verification_uri_complete: `${registryBaseUrl}/device?code=${userCode}`,
+    verification_uri_complete: `${registryBaseUrl}/device/${userCode}`,
     expires_in: 900, // 15 minutes
     interval: 5,
   });

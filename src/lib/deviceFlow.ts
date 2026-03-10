@@ -85,26 +85,36 @@ export async function authorizeDeviceCode(
     if (!entry) return false;
 
     // Update the entry to authorized
-    await docClient.send(
-        new UpdateCommand({
-            TableName: TABLES.DEVICE_CODES,
-            Key: { deviceCode: entry.deviceCode },
-            UpdateExpression:
-                "SET #s = :status, #t = :token, #u = :userId",
-            ConditionExpression: "#s = :pending",
-            ExpressionAttributeNames: {
-                "#s": "status",
-                "#t": "token",
-                "#u": "userId",
-            },
-            ExpressionAttributeValues: {
-                ":status": "authorized",
-                ":token": token,
-                ":userId": userId,
-                ":pending": "pending",
-            },
-        }),
-    );
+    try {
+        await docClient.send(
+            new UpdateCommand({
+                TableName: TABLES.DEVICE_CODES,
+                Key: { deviceCode: entry.deviceCode },
+                UpdateExpression:
+                    "SET #s = :status, #t = :token, #u = :userId",
+                ConditionExpression: "#s = :pending",
+                ExpressionAttributeNames: {
+                    "#s": "status",
+                    "#t": "token",
+                    "#u": "userId",
+                },
+                ExpressionAttributeValues: {
+                    ":status": "authorized",
+                    ":token": token,
+                    ":userId": userId,
+                    ":pending": "pending",
+                },
+            }),
+        );
+    } catch (err: unknown) {
+        if (
+            err instanceof Error &&
+            err.name === "ConditionalCheckFailedException"
+        ) {
+            return false;
+        }
+        throw err;
+    }
 
     return true;
 }
