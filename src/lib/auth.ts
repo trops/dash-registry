@@ -1,47 +1,31 @@
 /**
  * Auth utilities for API route authentication.
  *
- * Validates Cognito JWT tokens using JWKS signature verification.
+ * Validates Cognito JWT tokens using aws-jwt-verify — Amazon's official
+ * library for Cognito JWT verification, designed for Lambda environments.
  */
 import { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
-import jwksClient from "jwks-rsa";
+import { CognitoJwtVerifier } from "aws-jwt-verify";
 import outputs from "../../amplify_outputs.json";
 
-const COGNITO_REGION =
-  process.env.COGNITO_REGION || outputs.auth?.aws_region || "us-east-1";
 const COGNITO_USER_POOL_ID =
-  process.env.COGNITO_USER_POOL_ID || outputs.auth?.user_pool_id || "";
-const COGNITO_ISSUER = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${COGNITO_USER_POOL_ID}`;
-const JWKS_URI = `${COGNITO_ISSUER}/.well-known/jwks.json`;
+    process.env.COGNITO_USER_POOL_ID || outputs.auth?.user_pool_id || "";
 
-// JWKS client with 10-minute cache
-const client = jwksClient({
-  jwksUri: JWKS_URI,
-  cache: true,
-  cacheMaxAge: 600000,
-  rateLimit: true,
-  jwksRequestsPerMinute: 10,
+// Verifier handles JWKS fetching, caching, and RS256 verification internally
+const verifier = CognitoJwtVerifier.create({
+    userPoolId: COGNITO_USER_POOL_ID,
+    tokenUse: null, // accept both "access" and "id" tokens
+    clientId: null, // don't validate clientId
 });
 
-function getSigningKey(kid: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    client.getSigningKey(kid, (err, key) => {
-      if (err) return reject(err);
-      if (!key) return reject(new Error("No signing key found"));
-      resolve(key.getPublicKey());
-    });
-  });
-}
-
 export interface DecodedToken {
-  sub: string;
-  email?: string;
-  "cognito:username"?: string;
-  preferred_username?: string;
-  token_use: string;
-  exp: number;
-  iss: string;
+    sub: string;
+    email?: string;
+    "cognito:username"?: string;
+    preferred_username?: string;
+    token_use: string;
+    exp: number;
+    iss: string;
 }
 
 /**
@@ -50,55 +34,28 @@ export interface DecodedToken {
  * Returns the decoded token payload or null if invalid.
  */
 export async function authenticateRequest(
-  request: NextRequest,
+    request: NextRequest,
 ): Promise<DecodedToken | null> {
-  const authHeader = request.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.slice(7);
-
-  try {
-    // Decode header to get the kid
-    const decoded = jwt.decode(token, { complete: true });
-    if (!decoded || typeof decoded === "string" || !decoded.header.kid) {
-      console.warn("[Auth] Invalid JWT structure");
-      return null;
+    const authHeader = request.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+        return null;
     }
 
-    // Fetch signing key from JWKS
-    const signingKey = await getSigningKey(decoded.header.kid);
+    const token = authHeader.slice(7);
 
-    // Verify signature, issuer, and expiry
-    const payload = jwt.verify(token, signingKey, {
-      algorithms: ["RS256"],
-      issuer: COGNITO_ISSUER,
-    }) as DecodedToken;
-
-    // Verify token type
-    if (payload.token_use !== "access" && payload.token_use !== "id") {
-      console.warn("[Auth] Invalid token_use:", payload.token_use);
-      return null;
+    try {
+        const payload = await verifier.verify(token);
+        return payload as unknown as DecodedToken;
+    } catch (err) {
+        console.warn("[Auth] JWT verification failed:", err);
+        return null;
     }
-
-    return payload;
-  } catch (err) {
-    if (err instanceof jwt.TokenExpiredError) {
-      console.warn("[Auth] Token expired");
-    } else if (err instanceof jwt.JsonWebTokenError) {
-      console.warn("[Auth] JWT verification failed:", err.message);
-    } else {
-      console.error("[Auth] Token validation error:", err);
-    }
-    return null;
-  }
 }
 
 /**
  * Get the user's Cognito sub (user ID) from a request.
  */
 export async function getUserId(request: NextRequest): Promise<string | null> {
-  const token = await authenticateRequest(request);
-  return token?.sub || null;
+    const token = await authenticateRequest(request);
+    return token?.sub || null;
 }

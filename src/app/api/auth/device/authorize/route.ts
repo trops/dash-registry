@@ -52,8 +52,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true });
     } catch (err) {
         console.error("[API /auth/device/authorize] Error:", err);
+        const message = err instanceof Error ? err.message : "Unknown error";
         return NextResponse.json(
-            { error: "Failed to authorize device" },
+            { error: `Failed to authorize device: ${message}` },
             { status: 500 },
         );
     }
