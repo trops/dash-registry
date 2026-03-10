@@ -132,9 +132,7 @@ export async function POST(request: NextRequest) {
             widgets: manifest.widgets || [],
             createdAt: existing?.createdAt || now,
         };
-        if (manifest.appOrigin) {
-            packageRecord.appOrigin = manifest.appOrigin;
-        }
+        packageRecord.appOrigin = manifest.appOrigin;
         await putPackage(packageRecord);
 
         // 10. Create PackageVersion record
@@ -150,9 +148,7 @@ export async function POST(request: NextRequest) {
             fileSize: zipBuffer.length,
             ownerId: token.sub,
         };
-        if (manifest.appOrigin) {
-            versionRecord.appOrigin = manifest.appOrigin;
-        }
+        versionRecord.appOrigin = manifest.appOrigin;
         await putPackageVersion(versionRecord);
 
         // 11. Return success

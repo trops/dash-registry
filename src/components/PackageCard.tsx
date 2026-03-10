@@ -23,7 +23,22 @@ function getIcon(icon?: string): string {
     return iconMap[icon] || "\uD83D\uDCE6";
 }
 
+const TYPE_BADGE_STYLES: Record<string, string> = {
+    widget: "bg-blue-500/10 border-blue-500/30 text-blue-400",
+    dashboard: "bg-purple-500/10 border-purple-500/30 text-purple-400",
+};
+
 export function PackageCard({ pkg }: PackageCardProps) {
+    const pkgType = pkg.type || "widget";
+    const typeBadgeClass =
+        TYPE_BADGE_STYLES[pkgType] || TYPE_BADGE_STYLES.widget;
+    const typeLabel = pkgType === "dashboard" ? "Dashboard" : "Widget";
+    const widgetCount = (pkg.widgets || []).length;
+    const countLabel =
+        pkgType === "dashboard"
+            ? `${widgetCount} widget dep${widgetCount !== 1 ? "s" : ""}`
+            : `${widgetCount} widget${widgetCount !== 1 ? "s" : ""}`;
+
     return (
         <Link
             href={`/package/${pkg.githubUser || pkg.scope}/${pkg.name}`}
@@ -44,6 +59,11 @@ export function PackageCard({ pkg }: PackageCardProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <span
+                        className={`text-xs px-2 py-1 rounded border ${typeBadgeClass}`}
+                    >
+                        {typeLabel}
+                    </span>
                     {pkg.deprecated && (
                         <span className="text-xs px-2 py-1 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
                             Deprecated
@@ -70,10 +90,7 @@ export function PackageCard({ pkg }: PackageCardProps) {
                         </span>
                     ))}
                 </div>
-                <span className="text-xs text-dash-muted">
-                    {(pkg.widgets || []).length} widget
-                    {(pkg.widgets || []).length !== 1 ? "s" : ""}
-                </span>
+                <span className="text-xs text-dash-muted">{countLabel}</span>
             </div>
         </Link>
     );

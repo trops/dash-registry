@@ -138,6 +138,15 @@ export function validateManifest(manifest: Manifest): ValidationResult {
     });
   }
 
+  // appOrigin (required)
+  if (!manifest.appOrigin) {
+    errors.push('"appOrigin" is required');
+  } else if (typeof manifest.appOrigin !== "string") {
+    errors.push('"appOrigin" must be a string');
+  } else if (manifest.appOrigin.length > 200) {
+    errors.push('"appOrigin" must be at most 200 characters');
+  }
+
   // Optional fields
   if (manifest.category && !VALID_CATEGORIES.includes(manifest.category)) {
     warnings.push(`"category" not recognized (got "${manifest.category}")`);
@@ -153,14 +162,6 @@ export function validateManifest(manifest: Manifest): ValidationResult {
 
   if (manifest.description && manifest.description.length > 500) {
     warnings.push('"description" should be at most 500 characters');
-  }
-
-  if (manifest.appOrigin) {
-    if (typeof manifest.appOrigin !== "string") {
-      warnings.push('"appOrigin" should be a string');
-    } else if (manifest.appOrigin.length > 200) {
-      warnings.push('"appOrigin" should be at most 200 characters');
-    }
   }
 
   return {

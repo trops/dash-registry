@@ -16,9 +16,10 @@ export async function GET(request: NextRequest) {
         const search = searchParams.get("search") || undefined;
         const category = searchParams.get("category") || undefined;
         const type = searchParams.get("type") || undefined;
+        const appOrigin = searchParams.get("appOrigin") || undefined;
         const capabilities = searchParams.get("capabilities") || undefined;
 
-        const packages = await listPackages({ search, category, type });
+        const packages = await listPackages({ search, category, type, appOrigin });
 
         // Sort alphabetically by scope/name
         packages.sort((a, b) => {

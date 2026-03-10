@@ -21,6 +21,40 @@ import {
 } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
 
+// Extract OAuth return path from the callback URL before Amplify clears it.
+// The OAuth state parameter format is {random}-{hex_encoded_custom_state}.
+// This runs at module load time — synchronously, before any React rendering
+// or Amplify.configure() — guaranteeing the URL still has its query params.
+let _earlyOAuthReturnPath: string | null = null;
+if (typeof window !== "undefined") {
+    const _params = new URLSearchParams(window.location.search);
+    const _state = _params.get("state");
+    if (_state && _params.has("code")) {
+        const _dashIdx = _state.lastIndexOf("-");
+        if (_dashIdx !== -1) {
+            try {
+                const _hex = _state.substring(_dashIdx + 1);
+                _earlyOAuthReturnPath =
+                    _hex
+                        .match(/.{2}/g)
+                        ?.map((c) => String.fromCharCode(parseInt(c, 16)))
+                        .join("") ?? null;
+            } catch {
+                // ignore decode errors
+            }
+        }
+    }
+    console.log("[AuthContext:module]", {
+        search: window.location.search.substring(0, 80),
+        extractedPath: _earlyOAuthReturnPath,
+    });
+
+    // Early Hub listener — catches auth events fired before React mounts
+    Hub.listen("auth", ({ payload }) => {
+        console.log("[AuthContext:earlyHub]", payload.event, (payload as Record<string, unknown>).data);
+    });
+}
+
 export interface UserProfile {
   cognitoId: string;
   username: string;
@@ -37,11 +71,13 @@ interface AuthState {
   isLoading: boolean;
   profile: UserProfile | null;
   profileLoading: boolean;
+  oauthReturnPath: string | null;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => void;
+  signInWithGoogle: (customState?: string) => void;
   getAccessToken: () => Promise<string | null>;
   refreshAuth: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  clearOAuthReturnPath: () => void;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -50,11 +86,13 @@ const AuthContext = createContext<AuthState>({
   isLoading: true,
   profile: null,
   profileLoading: false,
+  oauthReturnPath: null,
   signOut: async () => {},
   signInWithGoogle: () => {},
   getAccessToken: async () => null,
   refreshAuth: async () => {},
   fetchProfile: async () => {},
+  clearOAuthReturnPath: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -62,6 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [oauthReturnPath, setOauthReturnPath] = useState<string | null>(() => {
+    if (_earlyOAuthReturnPath) {
+      const path = _earlyOAuthReturnPath;
+      _earlyOAuthReturnPath = null;
+      return path;
+    }
+    return null;
+  });
+
+  const clearOAuthReturnPath = useCallback(() => {
+    setOauthReturnPath(null);
+  }, []);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     try {
@@ -98,8 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = useCallback(async () => {
     try {
       const currentUser = await getCurrentUser();
+      console.log("[AuthContext] checkAuth: user found", currentUser.username);
       setUser(currentUser);
     } catch {
+      console.log("[AuthContext] checkAuth: no user");
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -121,8 +173,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = Hub.listen("auth", ({ payload }) => {
+      const hubPayload = payload as Record<string, unknown>;
+      console.log("[AuthContext:hub]", payload.event, hubPayload.data);
       switch (payload.event) {
+        case "customOAuthState":
+          setOauthReturnPath(hubPayload.data as string);
+          break;
         case "signInWithRedirect":
+          checkAuth();
+          break;
         case "signedIn":
           checkAuth();
           break;
@@ -145,8 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }, []);
 
-  const signInWithGoogle = useCallback(() => {
-    signInWithRedirect({ provider: "Google" });
+  const signInWithGoogle = useCallback((customState?: string) => {
+    signInWithRedirect({ provider: "Google", customState });
   }, []);
 
   return (
@@ -157,11 +216,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         profile,
         profileLoading,
+        oauthReturnPath,
         signOut,
         signInWithGoogle,
         getAccessToken,
         refreshAuth: checkAuth,
         fetchProfile,
+        clearOAuthReturnPath,
       }}
     >
       {children}
