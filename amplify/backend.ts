@@ -9,6 +9,7 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { storage } from "./storage/resource";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { RemovalPolicy } from "aws-cdk-lib";
 
 const backend = defineBackend({
@@ -75,6 +76,20 @@ deviceCodesTable.addGlobalSecondaryIndex({
     indexName: "userCode-index",
     partitionKey: { name: "userCode", type: dynamodb.AttributeType.STRING },
 });
+
+// --- IAM: Grant SSR compute role access to all tables (includes GSI ARNs) ---
+
+const ssrRole = iam.Role.fromRoleName(
+    dataStack,
+    "SSRComputeRole",
+    "DashRegistrySSRComputeRole",
+);
+
+usersTable.grantReadWriteData(ssrRole);
+packagesTable.grantReadWriteData(ssrRole);
+packageVersionsTable.grantReadWriteData(ssrRole);
+userLibraryTable.grantReadWriteData(ssrRole);
+deviceCodesTable.grantReadWriteData(ssrRole);
 
 // --- Outputs ---
 
