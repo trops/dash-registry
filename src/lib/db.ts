@@ -204,7 +204,8 @@ export async function listPackagesByScope(scope: string) {
   const result = await docClient.send(
     new QueryCommand({
       TableName: TABLES.PACKAGES,
-      KeyConditionExpression: "scope = :scope",
+      KeyConditionExpression: "#s = :scope",
+      ExpressionAttributeNames: { "#s": "scope" },
       ExpressionAttributeValues: { ":scope": scope },
     }),
   );
