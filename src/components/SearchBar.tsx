@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo } from "react";
 import type { Package } from "@/lib/registry";
 import { createSearchIndex, searchPackages } from "@/lib/search";
 import { PackageCard } from "./PackageCard";
-import { CategoryFilter } from "./CategoryFilter";
+import { TagFilter } from "./TagFilter";
+import { VALID_TAGS } from "@/lib/tags";
 
 interface SearchBarProps {
   packages: Package[];
-  categories: string[];
   appOrigins: string[];
 }
 
@@ -18,13 +18,9 @@ const TYPE_OPTIONS = [
   { label: "Dashboards", value: "dashboard" },
 ];
 
-export function SearchBar({
-  packages,
-  categories,
-  appOrigins,
-}: SearchBarProps) {
+export function SearchBar({ packages, appOrigins }: SearchBarProps) {
   const [query, setQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedAppOrigin, setSelectedAppOrigin] = useState("");
   const [results, setResults] = useState<Package[]>(packages);
@@ -35,7 +31,7 @@ export function SearchBar({
   const activeFilterCount =
     (selectedType ? 1 : 0) +
     (selectedAppOrigin ? 1 : 0) +
-    (selectedCategory ? 1 : 0);
+    (selectedTag ? 1 : 0);
 
   useEffect(() => {
     let filtered: Package[];
@@ -56,19 +52,14 @@ export function SearchBar({
       filtered = filtered.filter((pkg) => pkg.appOrigin === selectedAppOrigin);
     }
 
-    if (selectedCategory) {
-      filtered = filtered.filter((pkg) => pkg.category === selectedCategory);
+    if (selectedTag) {
+      filtered = filtered.filter((pkg) =>
+        (pkg.tags || []).includes(selectedTag),
+      );
     }
 
     setResults(filtered);
-  }, [
-    query,
-    selectedCategory,
-    selectedType,
-    selectedAppOrigin,
-    fuse,
-    packages,
-  ]);
+  }, [query, selectedTag, selectedType, selectedAppOrigin, fuse, packages]);
 
   return (
     <div>
@@ -164,15 +155,15 @@ export function SearchBar({
 
           <hr className="border-dash-border my-4" />
 
-          {/* CATEGORY section */}
+          {/* TAGS section */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-dash-muted mb-2">
-              Category
+              Tags
             </h3>
-            <CategoryFilter
-              categories={categories}
-              selected={selectedCategory}
-              onSelect={setSelectedCategory}
+            <TagFilter
+              tags={VALID_TAGS}
+              selected={selectedTag}
+              onSelect={setSelectedTag}
               variant="vertical"
             />
           </div>
@@ -184,7 +175,7 @@ export function SearchBar({
             <div className="text-center py-12">
               <p className="text-dash-muted text-lg">No packages found</p>
               <p className="text-dash-muted text-sm mt-1">
-                Try a different search term or category.
+                Try a different search term or tag.
               </p>
             </div>
           ) : (
