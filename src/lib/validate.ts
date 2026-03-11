@@ -9,6 +9,8 @@ const KEBAB_CASE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z-]+)?$/;
 const PASCAL_CASE = /^[A-Z][a-zA-Z0-9]+$/;
 
+import { VALID_TAGS } from "@/lib/tags";
+
 const VALID_CATEGORIES = [
   "general",
   "utilities",
@@ -152,8 +154,16 @@ export function validateManifest(manifest: Manifest): ValidationResult {
     warnings.push(`"category" not recognized (got "${manifest.category}")`);
   }
 
-  if (manifest.tags && manifest.tags.length > 10) {
-    warnings.push('"tags" should have at most 10 items');
+  if (manifest.tags) {
+    if (manifest.tags.length > 10) {
+      warnings.push('"tags" should have at most 10 items');
+    }
+    const invalidTags = manifest.tags.filter((t) => !VALID_TAGS.includes(t));
+    if (invalidTags.length > 0) {
+      warnings.push(
+        `Unrecognized tags: ${invalidTags.join(", ")}. Valid tags: ${VALID_TAGS.join(", ")}`,
+      );
+    }
   }
 
   if (manifest.author && manifest.author.length > 100) {
