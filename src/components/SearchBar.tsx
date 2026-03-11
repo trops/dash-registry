@@ -103,7 +103,7 @@ export function SearchBar({ packages, appOrigins }: SearchBarProps) {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Sidebar */}
         <aside
-          className={`${showFilters ? "block" : "hidden"} lg:block w-full lg:w-56 shrink-0 bg-dash-surface/50 border border-dash-border rounded-lg p-4 lg:p-5 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto`}
+          className={`${showFilters ? "block" : "hidden"} lg:block w-full lg:w-56 shrink-0 bg-dash-surface/50 border border-dash-border rounded-lg p-4 lg:p-5`}
         >
           {/* TYPE section */}
           <div className="mb-4">
