@@ -16,6 +16,7 @@ const TYPE_OPTIONS = [
   { label: "All", value: null },
   { label: "Widgets", value: "widget" },
   { label: "Dashboards", value: "dashboard" },
+  { label: "Themes", value: "theme" },
 ];
 
 export function SearchBar({ packages, appOrigins }: SearchBarProps) {

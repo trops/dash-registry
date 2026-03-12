@@ -37,6 +37,13 @@ interface Widget {
   providers?: Array<{ type?: string; required?: boolean }>;
 }
 
+interface ThemeColors {
+  primary?: string;
+  secondary?: string;
+  tertiary?: string;
+  neutral?: string;
+}
+
 interface Manifest {
   scope?: string;
   githubUser?: string;
@@ -53,6 +60,7 @@ interface Manifest {
   type?: string;
   icon?: string;
   appOrigin?: string;
+  colors?: ThemeColors;
 }
 
 export interface ValidationResult {
@@ -96,8 +104,20 @@ export function validateManifest(manifest: Manifest): ValidationResult {
     errors.push(`"version" must be valid semver (got "${manifest.version}")`);
   }
 
-  // widgets
-  if (!manifest.widgets || !Array.isArray(manifest.widgets)) {
+  // widgets — themes skip widget validation entirely
+  if (manifest.type === "theme") {
+    // Theme packages require colors instead of widgets
+    if (
+      !manifest.colors ||
+      !manifest.colors.primary ||
+      !manifest.colors.secondary ||
+      !manifest.colors.tertiary
+    ) {
+      errors.push(
+        "Theme packages require colors.primary, colors.secondary, colors.tertiary",
+      );
+    }
+  } else if (!manifest.widgets || !Array.isArray(manifest.widgets)) {
     errors.push('"widgets" must be a non-empty array');
   } else if (manifest.widgets.length === 0) {
     errors.push('"widgets" must be a non-empty array');
