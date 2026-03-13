@@ -11,6 +11,29 @@ Widget registry and marketplace for Dash. Built with Next.js 14, React 18, TypeS
 - `src/` — Next.js app source code
 - `public/` — Static assets including generated `registry-index.json`
 
+## Local CI Script (Recommended)
+
+The `scripts/ci.sh` script handles the full validation pipeline (Node 20 via nvm, manifest validation, ESLint, build) and optionally the git workflow:
+
+```bash
+# Validate only
+npm run ci
+
+# Validate + commit + version bump
+npm run ci:commit -- -m "Your commit message"
+
+# Above + push branch
+npm run ci:push -- -m "Your commit message"
+
+# Above + create PR
+npm run ci:pr -- -m "Your commit message"
+
+# Above + merge PR + tag + cleanup branches
+npm run ci:release -- -m "Your commit message"
+```
+
+Each flag is cumulative -- `--release` runs all prior steps. The script automatically switches to Node 20 using nvm.
+
 ## Commands
 
 - `npm run check` — Run full validation pipeline: validate + lint + build
