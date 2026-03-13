@@ -44,6 +44,16 @@ export interface Package {
     type?: string;
     appOrigin?: string;
     latestVersion?: string;
+    theme?: {
+        key?: string;
+        name?: string;
+        registryPackage?: string;
+        colors?: {
+            primary?: string;
+            secondary?: string;
+            tertiary?: string;
+        };
+    };
 }
 
 export interface RegistryIndex {

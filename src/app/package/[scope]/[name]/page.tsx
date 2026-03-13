@@ -176,6 +176,54 @@ export default async function PackageDetailPage({
                 </div>
             )}
 
+            {/* Bundled Theme */}
+            {pkg.theme && (
+                <div className="mb-8">
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        Included Theme
+                    </h2>
+                    <div className="p-4 rounded-lg bg-dash-bg border border-dash-border flex items-center gap-4">
+                        <span className="text-2xl">{"\uD83C\uDFA8"}</span>
+                        <div className="flex-1">
+                            <h4 className="text-base font-medium text-white">
+                                {pkg.theme.name ||
+                                    pkg.theme.key ||
+                                    "Bundled Theme"}
+                            </h4>
+                            <p className="text-sm text-dash-muted mt-0.5">
+                                Auto-installed with this dashboard
+                            </p>
+                        </div>
+                        {pkg.theme.colors && (
+                            <div className="flex items-center gap-2">
+                                {(
+                                    ["primary", "secondary", "tertiary"] as const
+                                ).map((key) => {
+                                    const color = pkg.theme?.colors?.[key];
+                                    if (!color) return null;
+                                    return (
+                                        <div
+                                            key={key}
+                                            className="flex flex-col items-center gap-1"
+                                        >
+                                            <div
+                                                className="h-8 w-8 rounded-full border-2 border-dash-border"
+                                                style={{
+                                                    backgroundColor: color,
+                                                }}
+                                            />
+                                            <span className="text-[10px] text-dash-muted capitalize">
+                                                {key}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Widgets */}
             {pkg.widgets && pkg.widgets.length > 0 && (
                 <div className="mb-8">
