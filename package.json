@@ -1,6 +1,6 @@
 {
     "name": "dash-registry",
-    "version": "1.1.30",
+    "version": "1.1.31",
     "private": true,
     "description": "Package registry and marketplace for Dash",
     "scripts": {
@@ -14,7 +14,12 @@
         "preversion": "npm run check",
         "create-project": "node scripts/create-project.js",
         "migrate": "node scripts/migrate-to-dynamo.js",
-        "migrate:dry": "node scripts/migrate-to-dynamo.js --dry-run"
+        "migrate:dry": "node scripts/migrate-to-dynamo.js --dry-run",
+        "ci": "./scripts/ci.sh",
+        "ci:commit": "./scripts/ci.sh --commit",
+        "ci:push": "./scripts/ci.sh --push",
+        "ci:pr": "./scripts/ci.sh --pr",
+        "ci:release": "./scripts/ci.sh --release"
     },
     "dependencies": {
         "@aws-amplify/backend": "^1.21.0",
