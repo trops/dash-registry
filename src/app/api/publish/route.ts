@@ -133,6 +133,12 @@ export async function POST(request: NextRequest) {
             createdAt: existing?.createdAt || now,
         };
         packageRecord.appOrigin = manifest.appOrigin;
+        if (manifest.theme) {
+            packageRecord.theme = manifest.theme;
+        }
+        if (manifest.colors) {
+            packageRecord.colors = manifest.colors;
+        }
         await putPackage(packageRecord);
 
         // 10. Create PackageVersion record
@@ -149,6 +155,9 @@ export async function POST(request: NextRequest) {
             ownerId: token.sub,
         };
         versionRecord.appOrigin = manifest.appOrigin;
+        if (manifest.theme) {
+            versionRecord.theme = manifest.theme;
+        }
         await putPackageVersion(versionRecord);
 
         // 11. Return success
