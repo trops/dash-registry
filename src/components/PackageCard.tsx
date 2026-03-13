@@ -26,18 +26,27 @@ function getIcon(icon?: string): string {
 const TYPE_BADGE_STYLES: Record<string, string> = {
     widget: "bg-blue-500/10 border-blue-500/30 text-blue-400",
     dashboard: "bg-purple-500/10 border-purple-500/30 text-purple-400",
+    theme: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+    widget: "Widget",
+    dashboard: "Dashboard",
+    theme: "Theme",
 };
 
 export function PackageCard({ pkg }: PackageCardProps) {
     const pkgType = pkg.type || "widget";
     const typeBadgeClass =
         TYPE_BADGE_STYLES[pkgType] || TYPE_BADGE_STYLES.widget;
-    const typeLabel = pkgType === "dashboard" ? "Dashboard" : "Widget";
+    const typeLabel = TYPE_LABELS[pkgType] || "Widget";
     const widgetCount = (pkg.widgets || []).length;
     const countLabel =
-        pkgType === "dashboard"
-            ? `${widgetCount} widget dep${widgetCount !== 1 ? "s" : ""}`
-            : `${widgetCount} widget${widgetCount !== 1 ? "s" : ""}`;
+        pkgType === "theme"
+            ? ""
+            : pkgType === "dashboard"
+              ? `${widgetCount} widget dep${widgetCount !== 1 ? "s" : ""}`
+              : `${widgetCount} widget${widgetCount !== 1 ? "s" : ""}`;
 
     return (
         <Link
@@ -47,7 +56,9 @@ export function PackageCard({ pkg }: PackageCardProps) {
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
                     <span className="text-2xl">
-                        {getIcon(pkg.widgets?.[0]?.icon)}
+                        {pkgType === "theme"
+                            ? "\uD83C\uDFA8"
+                            : getIcon(pkg.widgets?.[0]?.icon)}
                     </span>
                     <div>
                         <h3 className="text-lg font-semibold text-white group-hover:text-dash-accent transition-colors">
