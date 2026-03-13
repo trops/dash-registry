@@ -14,11 +14,15 @@ export interface WidgetProvider {
 
 export interface Widget {
     name: string;
-    displayName: string;
-    description: string;
+    displayName?: string;
+    description?: string;
     icon?: string;
     id?: string;
-    providers: WidgetProvider[];
+    package?: string;
+    version?: string;
+    required?: boolean;
+    author?: string;
+    providers?: WidgetProvider[];
 }
 
 export interface Package {

@@ -36,11 +36,13 @@ export function WidgetList({ widgets }: WidgetListProps) {
                         </span>
                         <div className="flex-1">
                             <h4 className="text-base font-medium text-white">
-                                {widget.displayName}
+                                {widget.displayName || widget.name}
                             </h4>
-                            <p className="text-sm text-dash-muted mt-1">
-                                {widget.description}
-                            </p>
+                            {(widget.description || widget.package) && (
+                                <p className="text-sm text-dash-muted mt-1">
+                                    {widget.description || widget.package}
+                                </p>
+                            )}
                             {widget.providers && widget.providers.length > 0 && (
                                 <div className="flex gap-1.5 mt-2">
                                     {widget.providers.map((p, idx) => (
