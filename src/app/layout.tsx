@@ -5,6 +5,7 @@ import DeviceReturnHandler from "@/components/DeviceReturnHandler";
 import NavBar from "@/components/NavBar";
 import "@aws-amplify/ui-react/styles.css";
 import "./globals.css";
+import packageJson from "../../package.json";
 
 export const metadata: Metadata = {
     title: "Dash Registry",
@@ -34,7 +35,7 @@ export default function RootLayout({
                         <footer className="border-t border-dash-border mt-16 py-8">
                             <div className="max-w-6xl mx-auto px-6 text-center text-sm text-dash-muted">
                                 <p>
-                                    Dash Registry &mdash; Built with
+                                    Dash Registry v{packageJson.version} &mdash; Built with
                                     Next.js. Open source on{" "}
                                     <a
                                         href="https://github.com/trops/dash-registry"
