@@ -56,6 +56,7 @@ interface Manifest {
   description?: string;
   category?: string;
   tags?: string[];
+  providerTypes?: unknown[];
   repository?: string;
   type?: string;
   icon?: string;
@@ -172,6 +173,19 @@ export function validateManifest(manifest: Manifest): ValidationResult {
   // Optional fields
   if (manifest.category && !VALID_CATEGORIES.includes(manifest.category)) {
     warnings.push(`"category" not recognized (got "${manifest.category}")`);
+  }
+
+  if (manifest.providerTypes) {
+    if (!Array.isArray(manifest.providerTypes)) {
+      warnings.push('"providerTypes" must be an array of strings');
+    } else {
+      const invalid = manifest.providerTypes.filter(
+        (t) => typeof t !== "string",
+      );
+      if (invalid.length > 0) {
+        warnings.push('"providerTypes" entries must be strings');
+      }
+    }
   }
 
   if (manifest.tags) {

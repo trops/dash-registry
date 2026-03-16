@@ -133,6 +133,9 @@ export async function POST(request: NextRequest) {
             createdAt: existing?.createdAt || now,
         };
         packageRecord.appOrigin = manifest.appOrigin;
+        if (manifest.providerTypes && Array.isArray(manifest.providerTypes)) {
+            packageRecord.providerTypes = manifest.providerTypes;
+        }
         if (manifest.theme) {
             packageRecord.theme = manifest.theme;
         }

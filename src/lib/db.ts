@@ -152,6 +152,7 @@ export async function listPackages(filters?: {
   category?: string;
   type?: string;
   appOrigin?: string;
+  providerTypes?: string[];
 }) {
   const filterParts: string[] = ["visibility = :vis"];
   const exprValues: Record<string, string> = { ":vis": "public" };
@@ -195,6 +196,19 @@ export async function listPackages(filters?: {
         (pkg.author as string)?.toLowerCase().includes(q) ||
         ((pkg.tags as string[]) || []).some((t) => t.toLowerCase().includes(q)),
     );
+  }
+
+  // Client-side providerTypes filter — return packages where at least one
+  // providerType matches the query. Packages without providerTypes are excluded
+  // only when the filter is active.
+  if (filters?.providerTypes && filters.providerTypes.length > 0) {
+    const wanted = new Set(
+      filters.providerTypes.map((t) => t.toLowerCase()),
+    );
+    packages = packages.filter((pkg) => {
+      const types = (pkg.providerTypes as string[]) || [];
+      return types.some((t) => wanted.has(t.toLowerCase()));
+    });
   }
 
   return packages;

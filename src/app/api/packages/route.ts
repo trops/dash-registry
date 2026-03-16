@@ -18,8 +18,12 @@ export async function GET(request: NextRequest) {
         const type = searchParams.get("type") || undefined;
         const appOrigin = searchParams.get("appOrigin") || undefined;
         const capabilities = searchParams.get("capabilities") || undefined;
+        const providerTypesParam = searchParams.get("providerTypes") || undefined;
+        const providerTypes = providerTypesParam
+            ? providerTypesParam.split(",").map((t) => t.trim()).filter(Boolean)
+            : undefined;
 
-        const packages = await listPackages({ search, category, type, appOrigin });
+        const packages = await listPackages({ search, category, type, appOrigin, providerTypes });
 
         // Sort alphabetically by scope/name
         packages.sort((a, b) => {
