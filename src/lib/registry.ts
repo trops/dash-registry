@@ -39,6 +39,7 @@ export interface Package {
     repository?: string;
     publishedAt: string;
     widgets: Widget[];
+    providerTypes?: string[];
     deprecated?: boolean;
     deprecatedMessage?: string;
     type?: string;
