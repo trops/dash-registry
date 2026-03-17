@@ -176,6 +176,44 @@ export default async function PackageDetailPage({
                 </div>
             )}
 
+            {/* Theme Colors (standalone themes) */}
+            {pkg.type === "theme" && (() => {
+                const colors = pkg.colors || pkg.theme?.colors;
+                if (!colors) return null;
+                const entries = (["primary", "secondary", "tertiary"] as const)
+                    .map((key) => ({ key, value: colors[key] }))
+                    .filter((e) => e.value);
+                if (entries.length === 0) return null;
+                return (
+                    <div className="mb-8">
+                        <h2 className="text-lg font-semibold text-white mb-4">
+                            Theme Colors
+                        </h2>
+                        <div className="flex items-center gap-6">
+                            {entries.map(({ key, value }) => (
+                                <div
+                                    key={key}
+                                    className="flex flex-col items-center gap-2"
+                                >
+                                    <div
+                                        className="h-16 w-16 rounded-lg border-2 border-dash-border"
+                                        style={{
+                                            backgroundColor: value,
+                                        }}
+                                    />
+                                    <span className="text-sm text-white capitalize">
+                                        {key}
+                                    </span>
+                                    <span className="text-xs text-dash-muted font-mono">
+                                        {value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Bundled Theme */}
             {pkg.theme && (
                 <div className="mb-8">
