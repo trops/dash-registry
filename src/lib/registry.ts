@@ -45,6 +45,11 @@ export interface Package {
     type?: string;
     appOrigin?: string;
     latestVersion?: string;
+    colors?: {
+        primary?: string;
+        secondary?: string;
+        tertiary?: string;
+    };
     theme?: {
         key?: string;
         name?: string;
