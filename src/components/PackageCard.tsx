@@ -90,6 +90,27 @@ export function PackageCard({ pkg }: PackageCardProps) {
                 {pkg.description}
             </p>
 
+            {pkgType === "theme" && (() => {
+                const colors = pkg.colors || pkg.theme?.colors;
+                if (!colors) return null;
+                const entries = (["primary", "secondary", "tertiary"] as const)
+                    .map((key) => ({ key, value: colors[key] }))
+                    .filter((e) => e.value);
+                if (entries.length === 0) return null;
+                return (
+                    <div className="flex items-center gap-2 mb-3">
+                        {entries.map(({ key, value }) => (
+                            <div
+                                key={key}
+                                className="h-4 w-4 rounded-full border border-white/10"
+                                style={{ backgroundColor: value }}
+                                title={`${key}: ${value}`}
+                            />
+                        ))}
+                    </div>
+                );
+            })()}
+
             <div className="flex items-center justify-between">
                 <div className="flex flex-wrap gap-1">
                     {pkg.tags.slice(0, 3).map((tag) => (
