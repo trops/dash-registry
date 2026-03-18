@@ -109,7 +109,8 @@ export async function POST(request: NextRequest) {
 
         // 8. Build download URL
         const registryBaseUrl =
-            process.env.REGISTRY_BASE_URL || "https://registry.trops.dev";
+            process.env.REGISTRY_BASE_URL ||
+            `${request.headers.get("x-forwarded-proto") || "https"}://${request.headers.get("host")}`;
         const downloadUrl = `${registryBaseUrl}/api/packages/${scope}/${manifest.name}/download?version=${manifest.version}`;
 
         // 9. Create/update Package record
