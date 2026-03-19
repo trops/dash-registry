@@ -1,0 +1,59 @@
+{
+  "githubUser": "trops",
+  "name": "slack",
+  "displayName": "Slack",
+  "author": "John P. Giatropoulos",
+  "description": "Granular Slack widgets — browse channels, view messages, post messages, search, and check user status.",
+  "version": "0.0.221",
+  "category": "social",
+  "tags": ["slack", "messaging", "channels"],
+  "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-slack-v{version}.zip",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T15:00:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "providerTypes": ["mcp"],
+  "widgets": [
+    {
+      "name": "SlackListChannels",
+      "displayName": "Slack List Channels",
+      "description": "Scrollable list of Slack channels with search filter. Click to select a channel.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "SlackChannelMessages",
+      "displayName": "Slack Channel Messages",
+      "description": "Displays message history for a Slack channel. Auto-refreshes on channel selection.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "SlackPostMessage",
+      "displayName": "Slack Post Message",
+      "description": "Compose and send messages to a Slack channel. Auto-fills channel from selection.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "SlackSearchMessages",
+      "displayName": "Slack Search Messages",
+      "description": "Search Slack messages across channels with context snippets.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "SlackUserStatus",
+      "displayName": "Slack User Status",
+      "description": "View and update your Slack user status with emoji and text.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "SlackWidget",
+      "displayName": "Slack",
+      "description": "List channels and send messages via the Slack MCP provider.",
+      "icon": "slack",
+      "providers": [{ "type": "slack", "required": true, "providerClass": "mcp" }]
+    }
+  ]
+}

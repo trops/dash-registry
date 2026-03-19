@@ -1,0 +1,52 @@
+{
+  "githubUser": "trops",
+  "name": "gmail",
+  "displayName": "Gmail",
+  "author": "John P. Giatropoulos",
+  "description": "Granular Gmail widgets — inbox, message view, compose, and search.",
+  "version": "0.0.221",
+  "category": "productivity",
+  "tags": ["gmail", "email", "google"],
+  "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-gmail-v{version}.zip",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T15:00:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "providerTypes": ["mcp"],
+  "widgets": [
+    {
+      "name": "GmailInbox",
+      "displayName": "Gmail Inbox",
+      "description": "Displays inbox emails with unread indicators. Click to select and publish emailSelected events.",
+      "icon": "envelope",
+      "providers": [{ "type": "gmail", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GmailMessageView",
+      "displayName": "Gmail Message View",
+      "description": "Displays full email content. Listens for emailSelected events to load the selected email.",
+      "icon": "envelope",
+      "providers": [{ "type": "gmail", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GmailCompose",
+      "displayName": "Gmail Compose",
+      "description": "Compose and send emails. Listens for emailSelected to pre-fill reply-to fields.",
+      "icon": "envelope",
+      "providers": [{ "type": "gmail", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GmailSearch",
+      "displayName": "Gmail Search",
+      "description": "Search emails with custom queries. Click results to publish emailSelected events.",
+      "icon": "envelope",
+      "providers": [{ "type": "gmail", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GmailWidget",
+      "displayName": "Gmail",
+      "description": "Search and read emails via the Gmail MCP provider.",
+      "icon": "envelope",
+      "providers": [{ "type": "gmail", "required": true, "providerClass": "mcp" }]
+    }
+  ]
+}
