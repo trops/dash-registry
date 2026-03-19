@@ -1,0 +1,52 @@
+{
+  "githubUser": "trops",
+  "name": "git-hub",
+  "displayName": "GitHub",
+  "author": "John P. Giatropoulos",
+  "description": "Granular GitHub widgets — repo list, issue list, PR list, and issue details.",
+  "version": "0.0.221",
+  "category": "development",
+  "tags": ["github", "repos", "issues", "pull-requests"],
+  "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-git-hub-v{version}.zip",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T15:00:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "providerTypes": ["mcp"],
+  "widgets": [
+    {
+      "name": "GitHubRepoList",
+      "displayName": "GitHub Repo List",
+      "description": "Search and browse GitHub repositories. Publishes repoSelected events.",
+      "icon": "github",
+      "providers": [{ "type": "github", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GitHubIssueList",
+      "displayName": "GitHub Issue List",
+      "description": "List GitHub issues for a repository. Listens for repoSelected, publishes issueSelected.",
+      "icon": "github",
+      "providers": [{ "type": "github", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GitHubPRList",
+      "displayName": "GitHub PR List",
+      "description": "List pull requests for a repository. Listens for repoSelected, publishes prSelected.",
+      "icon": "github",
+      "providers": [{ "type": "github", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GitHubIssueDetail",
+      "displayName": "GitHub Issue Detail",
+      "description": "Display full details of a GitHub issue. Listens for issueSelected events.",
+      "icon": "github",
+      "providers": [{ "type": "github", "required": true, "providerClass": "mcp" }]
+    },
+    {
+      "name": "GitHubWidget",
+      "displayName": "GitHub",
+      "description": "Search repos and list issues via the GitHub MCP provider.",
+      "icon": "github",
+      "providers": [{ "type": "github", "required": true, "providerClass": "mcp" }]
+    }
+  ]
+}

@@ -1,5 +1,434 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-18T01:52:03.354Z",
-  "packages": []
+  "lastUpdated": "2026-03-19T15:17:35.286Z",
+  "packages": [
+    {
+      "githubUser": "trops",
+      "name": "git-hub",
+      "displayName": "GitHub",
+      "author": "John P. Giatropoulos",
+      "description": "Granular GitHub widgets — repo list, issue list, PR list, and issue details.",
+      "version": "0.0.221",
+      "category": "development",
+      "tags": [
+        "github",
+        "repos",
+        "issues",
+        "pull-requests"
+      ],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-git-hub-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T15:00:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "providerTypes": [
+        "mcp"
+      ],
+      "widgets": [
+        {
+          "name": "GitHubRepoList",
+          "displayName": "GitHub Repo List",
+          "description": "Search and browse GitHub repositories. Publishes repoSelected events.",
+          "icon": "github",
+          "providers": [
+            {
+              "type": "github",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GitHubIssueList",
+          "displayName": "GitHub Issue List",
+          "description": "List GitHub issues for a repository. Listens for repoSelected, publishes issueSelected.",
+          "icon": "github",
+          "providers": [
+            {
+              "type": "github",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GitHubPRList",
+          "displayName": "GitHub PR List",
+          "description": "List pull requests for a repository. Listens for repoSelected, publishes prSelected.",
+          "icon": "github",
+          "providers": [
+            {
+              "type": "github",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GitHubIssueDetail",
+          "displayName": "GitHub Issue Detail",
+          "description": "Display full details of a GitHub issue. Listens for issueSelected events.",
+          "icon": "github",
+          "providers": [
+            {
+              "type": "github",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GitHubWidget",
+          "displayName": "GitHub",
+          "description": "Search repos and list issues via the GitHub MCP provider.",
+          "icon": "github",
+          "providers": [
+            {
+              "type": "github",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "gmail",
+      "displayName": "Gmail",
+      "author": "John P. Giatropoulos",
+      "description": "Granular Gmail widgets — inbox, message view, compose, and search.",
+      "version": "0.0.221",
+      "category": "productivity",
+      "tags": [
+        "gmail",
+        "email",
+        "google"
+      ],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-gmail-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T15:00:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "providerTypes": [
+        "mcp"
+      ],
+      "widgets": [
+        {
+          "name": "GmailInbox",
+          "displayName": "Gmail Inbox",
+          "description": "Displays inbox emails with unread indicators. Click to select and publish emailSelected events.",
+          "icon": "envelope",
+          "providers": [
+            {
+              "type": "gmail",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GmailMessageView",
+          "displayName": "Gmail Message View",
+          "description": "Displays full email content. Listens for emailSelected events to load the selected email.",
+          "icon": "envelope",
+          "providers": [
+            {
+              "type": "gmail",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GmailCompose",
+          "displayName": "Gmail Compose",
+          "description": "Compose and send emails. Listens for emailSelected to pre-fill reply-to fields.",
+          "icon": "envelope",
+          "providers": [
+            {
+              "type": "gmail",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GmailSearch",
+          "displayName": "Gmail Search",
+          "description": "Search emails with custom queries. Click results to publish emailSelected events.",
+          "icon": "envelope",
+          "providers": [
+            {
+              "type": "gmail",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GmailWidget",
+          "displayName": "Gmail",
+          "description": "Search and read emails via the Gmail MCP provider.",
+          "icon": "envelope",
+          "providers": [
+            {
+              "type": "gmail",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "google-calendar",
+      "displayName": "Google Calendar",
+      "author": "John P. Giatropoulos",
+      "description": "Granular Google Calendar widgets — upcoming events, event details, and quick event creation.",
+      "version": "0.0.221",
+      "category": "productivity",
+      "tags": [
+        "google",
+        "calendar",
+        "events"
+      ],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-google-calendar-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T15:00:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "providerTypes": [
+        "mcp"
+      ],
+      "widgets": [
+        {
+          "name": "GCalUpcoming",
+          "displayName": "Google Calendar Upcoming",
+          "description": "Chronological list of upcoming Google Calendar events. Click an event to publish an eventSelected event.",
+          "icon": "calendar-days",
+          "providers": [
+            {
+              "type": "google-calendar",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GCalEventDetail",
+          "displayName": "Google Calendar Event Detail",
+          "description": "Display full details for a selected Google Calendar event. Listens for eventSelected events.",
+          "icon": "calendar-days",
+          "providers": [
+            {
+              "type": "google-calendar",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GCalQuickCreate",
+          "displayName": "Google Calendar Quick Create",
+          "description": "Quick-create form for Google Calendar events with title, date, time, and optional location.",
+          "icon": "calendar-days",
+          "providers": [
+            {
+              "type": "google-calendar",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GoogleCalendarWidget",
+          "displayName": "Google Calendar",
+          "description": "View today's agenda, upcoming meetings, and create events via Google Calendar MCP.",
+          "icon": "calendar-days",
+          "providers": [
+            {
+              "type": "google-calendar",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "google-drive",
+      "displayName": "Google Drive",
+      "author": "John P. Giatropoulos",
+      "description": "Granular Google Drive widgets — file list, search, and file preview.",
+      "version": "0.0.221",
+      "category": "productivity",
+      "tags": [
+        "google",
+        "drive",
+        "files"
+      ],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-google-drive-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T15:00:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "providerTypes": [
+        "mcp"
+      ],
+      "widgets": [
+        {
+          "name": "GDriveFileList",
+          "displayName": "Google Drive File List",
+          "description": "Sortable file and folder list from Google Drive. Click a file to publish a fileSelected event.",
+          "icon": "hard-drive",
+          "providers": [
+            {
+              "type": "google-drive",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GDriveFileSearch",
+          "displayName": "Google Drive File Search",
+          "description": "Search Google Drive files by query. Shows file name, type, and modified date. Click a result to publish a fileSelected event.",
+          "icon": "hard-drive",
+          "providers": [
+            {
+              "type": "google-drive",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GDriveFilePreview",
+          "displayName": "Google Drive File Preview",
+          "description": "Display file metadata for a selected Google Drive file. Listens for fileSelected events.",
+          "icon": "hard-drive",
+          "providers": [
+            {
+              "type": "google-drive",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "GoogleDriveWidget",
+          "displayName": "Google Drive",
+          "description": "Browse and search files in Google Drive via the Google Drive MCP provider.",
+          "icon": "hard-drive",
+          "providers": [
+            {
+              "type": "google-drive",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "slack",
+      "displayName": "Slack",
+      "author": "John P. Giatropoulos",
+      "description": "Granular Slack widgets — browse channels, view messages, post messages, search, and check user status.",
+      "version": "0.0.221",
+      "category": "social",
+      "tags": [
+        "slack",
+        "messaging",
+        "channels"
+      ],
+      "downloadUrl": "https://github.com/trops/dash-electron/releases/download/v{version}/widgets-slack-v{version}.zip",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T15:00:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "providerTypes": [
+        "mcp"
+      ],
+      "widgets": [
+        {
+          "name": "SlackListChannels",
+          "displayName": "Slack List Channels",
+          "description": "Scrollable list of Slack channels with search filter. Click to select a channel.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "SlackChannelMessages",
+          "displayName": "Slack Channel Messages",
+          "description": "Displays message history for a Slack channel. Auto-refreshes on channel selection.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "SlackPostMessage",
+          "displayName": "Slack Post Message",
+          "description": "Compose and send messages to a Slack channel. Auto-fills channel from selection.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "SlackSearchMessages",
+          "displayName": "Slack Search Messages",
+          "description": "Search Slack messages across channels with context snippets.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "SlackUserStatus",
+          "displayName": "Slack User Status",
+          "description": "View and update your Slack user status with emoji and text.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        },
+        {
+          "name": "SlackWidget",
+          "displayName": "Slack",
+          "description": "List channels and send messages via the Slack MCP provider.",
+          "icon": "slack",
+          "providers": [
+            {
+              "type": "slack",
+              "required": true,
+              "providerClass": "mcp"
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
