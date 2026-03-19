@@ -1,0 +1,21 @@
+{
+  "githubUser": "trops",
+  "name": "monokai-ember",
+  "displayName": "Monokai Ember",
+  "author": "John P. Giatropoulos",
+  "description": "Monokai-inspired palette with orange, rose, and green accents",
+  "version": "0.0.226",
+  "type": "theme",
+  "category": "general",
+  "tags": ["editor", "vibrant"],
+  "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/monokai-ember/download?version={version}",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T16:25:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "colors": {
+    "primary": "orange",
+    "secondary": "rose",
+    "tertiary": "green"
+  },
+  "widgets": []
+}

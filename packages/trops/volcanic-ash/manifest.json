@@ -1,0 +1,21 @@
+{
+  "githubUser": "trops",
+  "name": "volcanic-ash",
+  "displayName": "Volcanic Ash",
+  "author": "John P. Giatropoulos",
+  "description": "Volcanic fire palette with red, amber, and orange",
+  "version": "0.0.226",
+  "type": "theme",
+  "category": "general",
+  "tags": ["warm", "bold"],
+  "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/volcanic-ash/download?version={version}",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T16:25:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "colors": {
+    "primary": "red",
+    "secondary": "amber",
+    "tertiary": "orange"
+  },
+  "widgets": []
+}

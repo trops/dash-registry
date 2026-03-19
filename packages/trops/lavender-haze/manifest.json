@@ -1,0 +1,21 @@
+{
+  "githubUser": "trops",
+  "name": "lavender-haze",
+  "displayName": "Lavender Haze",
+  "author": "John P. Giatropoulos",
+  "description": "Soft purple tones with violet, indigo, and purple",
+  "version": "0.0.226",
+  "type": "theme",
+  "category": "general",
+  "tags": ["soft", "purple"],
+  "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/lavender-haze/download?version={version}",
+  "repository": "https://github.com/trops/dash-electron",
+  "publishedAt": "2026-03-19T16:25:00.000Z",
+  "appOrigin": "@trops/dash-electron",
+  "colors": {
+    "primary": "violet",
+    "secondary": "indigo",
+    "tertiary": "purple"
+  },
+  "widgets": []
+}
