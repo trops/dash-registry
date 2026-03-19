@@ -8,6 +8,9 @@ applications:
         build:
           commands:
             - npm run build
+        postBuild:
+          commands:
+            - node scripts/migrate-to-dynamo.js || echo "Migration skipped (no AWS credentials or tables)"
       artifacts:
         baseDirectory: .next
         files:
