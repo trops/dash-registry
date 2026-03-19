@@ -1,7 +1,79 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-19T15:28:48.583Z",
+  "lastUpdated": "2026-03-19T16:32:50.141Z",
   "packages": [
+    {
+      "githubUser": "trops",
+      "name": "copper-canyon",
+      "displayName": "Copper Canyon",
+      "author": "John P. Giatropoulos",
+      "description": "Warm desert palette with orange, amber, and red tones",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "warm",
+        "desert"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/copper-canyon/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "orange",
+        "secondary": "amber",
+        "tertiary": "red"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "dracula-night",
+      "displayName": "Dracula Night",
+      "author": "John P. Giatropoulos",
+      "description": "Dark editor-inspired theme with purple, pink, and cyan tones",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "dark",
+        "editor"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/dracula-night/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "purple",
+        "secondary": "pink",
+        "tertiary": "cyan"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "evergreen-pine",
+      "displayName": "Evergreen Pine",
+      "author": "John P. Giatropoulos",
+      "description": "Deep forest palette with emerald, teal, and lime greens",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "nature",
+        "green"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/evergreen-pine/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "emerald",
+        "secondary": "teal",
+        "tertiary": "lime"
+      },
+      "widgets": []
+    },
     {
       "githubUser": "trops",
       "name": "git-hub",
@@ -331,6 +403,126 @@
     },
     {
       "githubUser": "trops",
+      "name": "lavender-haze",
+      "displayName": "Lavender Haze",
+      "author": "John P. Giatropoulos",
+      "description": "Soft purple tones with violet, indigo, and purple",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "soft",
+        "purple"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/lavender-haze/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "violet",
+        "secondary": "indigo",
+        "tertiary": "purple"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "monokai-ember",
+      "displayName": "Monokai Ember",
+      "author": "John P. Giatropoulos",
+      "description": "Monokai-inspired palette with orange, rose, and green accents",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "editor",
+        "vibrant"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/monokai-ember/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "orange",
+        "secondary": "rose",
+        "tertiary": "green"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "nordic-frost",
+      "displayName": "Nordic Frost",
+      "author": "John P. Giatropoulos",
+      "description": "Cool Scandinavian palette with sky blues and slate accents",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "cool",
+        "minimal"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/nordic-frost/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "sky",
+        "secondary": "slate",
+        "tertiary": "blue"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "oceanic-breeze",
+      "displayName": "Oceanic Breeze",
+      "author": "John P. Giatropoulos",
+      "description": "Tropical ocean palette with cyan, sky, and teal tones",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "ocean",
+        "cool"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/oceanic-breeze/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "cyan",
+        "secondary": "sky",
+        "tertiary": "teal"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "sakura-blossom",
+      "displayName": "Sakura Blossom",
+      "author": "John P. Giatropoulos",
+      "description": "Japanese cherry blossom theme with pink, rose, and fuchsia",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "soft",
+        "pink"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/sakura-blossom/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "pink",
+        "secondary": "rose",
+        "tertiary": "fuchsia"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
       "name": "slack",
       "displayName": "Slack",
       "author": "John P. Giatropoulos",
@@ -429,6 +621,54 @@
           ]
         }
       ]
+    },
+    {
+      "githubUser": "trops",
+      "name": "solarized-warm",
+      "displayName": "Solarized Warm",
+      "author": "John P. Giatropoulos",
+      "description": "Warm Solarized variant with amber, orange, and yellow",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "warm",
+        "classic"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/solarized-warm/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "amber",
+        "secondary": "orange",
+        "tertiary": "yellow"
+      },
+      "widgets": []
+    },
+    {
+      "githubUser": "trops",
+      "name": "volcanic-ash",
+      "displayName": "Volcanic Ash",
+      "author": "John P. Giatropoulos",
+      "description": "Volcanic fire palette with red, amber, and orange",
+      "version": "0.0.226",
+      "type": "theme",
+      "category": "general",
+      "tags": [
+        "warm",
+        "bold"
+      ],
+      "downloadUrl": "https://main.d919rwhuzp7rj.amplifyapp.com/api/packages/trops/volcanic-ash/download?version={version}",
+      "repository": "https://github.com/trops/dash-electron",
+      "publishedAt": "2026-03-19T16:25:00.000Z",
+      "appOrigin": "@trops/dash-electron",
+      "colors": {
+        "primary": "red",
+        "secondary": "amber",
+        "tertiary": "orange"
+      },
+      "widgets": []
     }
   ]
 }

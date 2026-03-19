@@ -144,8 +144,20 @@ function validateManifest(manifest, scopeDirName, pkgDirName, filePath) {
     );
   }
 
-  // widgets
-  if (!manifest.widgets) {
+  // widgets — themes skip widget validation entirely
+  if (manifest.type === "theme") {
+    // Theme packages require colors instead of widgets
+    if (
+      !manifest.colors ||
+      !manifest.colors.primary ||
+      !manifest.colors.secondary ||
+      !manifest.colors.tertiary
+    ) {
+      err(
+        "Theme packages require colors.primary, colors.secondary, colors.tertiary",
+      );
+    }
+  } else if (!manifest.widgets) {
     err('"widgets" is required');
   } else if (
     !Array.isArray(manifest.widgets) ||
@@ -403,13 +415,20 @@ function main() {
       }
 
       if (errors.length === 0) {
-        const widgetCount = Array.isArray(manifest.widgets)
-          ? manifest.widgets.length
-          : 0;
         const deprecatedTag = manifest.deprecated ? " [DEPRECATED]" : "";
-        console.log(
-          `  \u2713 ${scopeDir.name}/${pkgDir.name} (${widgetCount} widget${widgetCount !== 1 ? "s" : ""})${deprecatedTag}`,
-        );
+        if (manifest.type === "theme") {
+          const c = manifest.colors || {};
+          console.log(
+            `  \u2713 ${scopeDir.name}/${pkgDir.name} [theme] (${c.primary}/${c.secondary}/${c.tertiary})${deprecatedTag}`,
+          );
+        } else {
+          const widgetCount = Array.isArray(manifest.widgets)
+            ? manifest.widgets.length
+            : 0;
+          console.log(
+            `  \u2713 ${scopeDir.name}/${pkgDir.name} (${widgetCount} widget${widgetCount !== 1 ? "s" : ""})${deprecatedTag}`,
+          );
+        }
       } else {
         console.log(`  \u2717 ${scopeDir.name}/${pkgDir.name}`);
       }
