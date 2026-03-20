@@ -30,6 +30,9 @@ interface Widget {
   description?: string;
   icon?: string;
   id?: string;
+  scope?: string;
+  packageName?: string;
+  widgetName?: string;
   package?: string;
   version?: string;
   required?: boolean;
@@ -136,6 +139,23 @@ export function validateManifest(manifest: Manifest): ValidationResult {
       } else {
         seenPackages.add(widget.package);
       }
+
+      // Scope enforcement warnings (will become errors in a future release)
+      if (!widget.scope) {
+        warnings.push(
+          `${prefix}.scope is missing — scoped widget IDs will be required in a future release`,
+        );
+      }
+      if (!widget.packageName) {
+        warnings.push(
+          `${prefix}.packageName is missing — scoped widget IDs will be required in a future release`,
+        );
+      }
+      if (!widget.widgetName) {
+        warnings.push(
+          `${prefix}.widgetName is missing — scoped widget IDs will be required in a future release`,
+        );
+      }
     });
   } else {
     // Widget package validation (existing behavior)
@@ -157,6 +177,23 @@ export function validateManifest(manifest: Manifest): ValidationResult {
       }
       if (!widget.description) {
         errors.push(`${prefix}.description is required`);
+      }
+
+      // Scope enforcement warnings (will become errors in a future release)
+      if (!widget.scope) {
+        warnings.push(
+          `${prefix}.scope is missing — scoped widget IDs will be required in a future release`,
+        );
+      }
+      if (!widget.packageName) {
+        warnings.push(
+          `${prefix}.packageName is missing — scoped widget IDs will be required in a future release`,
+        );
+      }
+      if (!widget.widgetName) {
+        warnings.push(
+          `${prefix}.widgetName is missing — scoped widget IDs will be required in a future release`,
+        );
       }
     });
   }
