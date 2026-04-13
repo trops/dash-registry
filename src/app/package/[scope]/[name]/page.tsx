@@ -1,4 +1,5 @@
 import { WidgetList } from "@/components/WidgetList";
+import { ManageAccessLink } from "@/components/ManageAccessLink";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Package } from "@/lib/registry";
@@ -13,6 +14,8 @@ interface PackageVersion {
 
 interface PackageDetail extends Package {
     versions?: PackageVersion[];
+    ownerId?: string;
+    visibility?: string;
 }
 
 async function fetchPackageDetail(
@@ -86,10 +89,27 @@ export default async function PackageDetailPage({
                             <span className="text-white">{pkg.author}</span>
                         </p>
                     </div>
-                    <span className="text-sm px-3 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted">
-                        v{pkg.latestVersion || pkg.version}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        {pkg.visibility === "private" && (
+                            <span className="text-xs px-2 py-1 rounded bg-amber-500/10 border border-amber-500/40 text-amber-300 uppercase tracking-wide">
+                                Private
+                            </span>
+                        )}
+                        <span className="text-sm px-3 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted">
+                            v{pkg.latestVersion || pkg.version}
+                        </span>
+                    </div>
                 </div>
+
+                {pkg.ownerId && pkg.scope && pkg.name && (
+                    <div className="mt-3">
+                        <ManageAccessLink
+                            scope={pkg.scope}
+                            name={pkg.name}
+                            ownerId={pkg.ownerId}
+                        />
+                    </div>
+                )}
 
                 <p className="text-base text-dash-text mt-4">
                     {pkg.description}
