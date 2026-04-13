@@ -6,10 +6,8 @@
  * composite sort keys are incompatible with the raw SDK calls in db.ts.
  */
 import { defineBackend } from "@aws-amplify/backend";
-// Explicit .js extensions are required by Amplify's ESM loader in CI
-// (node --experimental-vm-modules). TS allows this even when importing .ts.
-import { auth } from "./auth/resource.js";
-import { storage } from "./storage/resource.js";
+import { auth } from "./auth/resource";
+import { storage } from "./storage/resource";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { RemovalPolicy } from "aws-cdk-lib";
 
