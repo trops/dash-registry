@@ -64,6 +64,13 @@ function isOwner(pkg: PackageLike, userId: string): boolean {
 
 export interface CheckEntitlementParams {
   userId: string;
+  /**
+   * The requester's verified email. When provided, email-pending
+   * entitlements matching this email count toward access. Pass null (or
+   * omit) when the email isn't verified in the auth token — unverified
+   * emails are untrusted and cannot claim entitlements.
+   */
+  verifiedEmail?: string | null;
   pkg: PackageLike;
   version: string;
 }
@@ -71,7 +78,7 @@ export interface CheckEntitlementParams {
 export async function checkEntitlement(
   params: CheckEntitlementParams,
 ): Promise<EntitlementResult> {
-  const { userId, pkg, version } = params;
+  const { userId, verifiedEmail, pkg, version } = params;
 
   // Feature flag: until enabled, treat every package as public.
   // This keeps existing public-package behavior unchanged in production.
@@ -87,11 +94,15 @@ export async function checkEntitlement(
     return { allowed: true, reason: "owner", entitlementId: null };
   }
 
-  // Build the set of grantee keys the user matches: their own user-key
-  // plus one org-key per org they belong to.
+  // Build the set of grantee keys the user matches: their own user-key,
+  // one org-key per org they belong to, and (only if the email is verified
+  // by Cognito) their email-key so they can claim pre-invites.
   const memberships = await listOrgsForUser(userId);
   const granteeKeys = new Set<string>([`user#${userId}`]);
   for (const m of memberships) granteeKeys.add(`org#${m.orgId}`);
+  if (verifiedEmail) {
+    granteeKeys.add(`email#${verifiedEmail.trim().toLowerCase()}`);
+  }
 
   const entitlements = await listEntitlementsForPackage(pkg.scope, pkg.name);
 
@@ -144,6 +155,7 @@ export async function checkEntitlement(
 export async function filterReadableByUser<T extends PackageLike>(
   packages: T[],
   userId: string | null,
+  verifiedEmail: string | null = null,
 ): Promise<T[]> {
   // When the flag is off, all packages are public — trivially readable.
   if (!isPrivatePackagesEnabled()) return packages;
@@ -164,6 +176,9 @@ export async function filterReadableByUser<T extends PackageLike>(
     const memberships = await listOrgsForUser(userId);
     const granteeKeys = new Set<string>([`user#${userId}`]);
     for (const m of memberships) granteeKeys.add(`org#${m.orgId}`);
+    if (verifiedEmail) {
+      granteeKeys.add(`email#${verifiedEmail.trim().toLowerCase()}`);
+    }
     const entitlements = await listEntitlementsForPackage(pkg.scope, pkg.name);
     const hasMatch = entitlements.some(
       (e) =>
@@ -183,7 +198,14 @@ export interface CreateEntitlementInput {
   packageScope: string;
   packageName: string;
   versionConstraint?: string;
-  granteeType: "user" | "org";
+  granteeType: "user" | "org" | "email";
+  /**
+   * For user grants: cognitoId.
+   * For org grants: orgId.
+   * For email grants: the email address. Callers should normalize
+   *   (lowercase + trim) before passing — buildEntitlement re-normalizes
+   *   defensively so stored keys are consistent.
+   */
   granteeId: string;
   seats?: number | null;
   expiresAt?: string | null;
@@ -195,6 +217,12 @@ export function buildEntitlement(input: CreateEntitlementInput): Entitlement {
   const now = new Date().toISOString();
   const random = Math.random().toString(36).slice(2, 10);
   const ts = Date.now().toString(36);
+  // Email grantee keys are normalized to lowercase + trimmed so that
+  // granteeKey lookups work regardless of input casing.
+  const granteeId =
+    input.granteeType === "email"
+      ? input.granteeId.trim().toLowerCase()
+      : input.granteeId;
   return {
     entitlementId: `ent_${ts}${random}`,
     packageScope: input.packageScope,
@@ -202,14 +230,16 @@ export function buildEntitlement(input: CreateEntitlementInput): Entitlement {
     packageKey: `${input.packageScope}#${input.packageName}`,
     versionConstraint: input.versionConstraint || "*",
     granteeType: input.granteeType,
-    granteeId: input.granteeId,
-    granteeKey: `${input.granteeType}#${input.granteeId}`,
+    granteeId,
+    granteeKey: `${input.granteeType}#${granteeId}`,
     seats: input.seats ?? null,
     activeSeats: 0,
     expiresAt: input.expiresAt ?? null,
     source: input.source,
     createdByUserId: input.createdByUserId,
     createdAt: now,
+    claimedByUserId: null,
+    claimedAt: null,
     revokedAt: null,
   };
 }

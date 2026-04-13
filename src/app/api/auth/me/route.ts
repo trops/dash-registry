@@ -6,7 +6,30 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { getUserByCognitoId, updateUser } from "@/lib/db";
+import {
+  getUserByCognitoId,
+  updateUser,
+  listEntitlementsForGrantee,
+  claimEmailEntitlement,
+} from "@/lib/db";
+
+/**
+ * Best-effort conversion of email-pending entitlements into user grants
+ * once a matching verified email signs in. Runs opportunistically on /me.
+ * Failures are swallowed — /me should never fail because of claim issues.
+ */
+async function claimPendingForUser(userId: string, email: string) {
+  try {
+    const normalized = email.trim().toLowerCase();
+    const pending = await listEntitlementsForGrantee("email", normalized);
+    for (const e of pending) {
+      if (e.revokedAt || e.claimedByUserId) continue;
+      await claimEmailEntitlement(e.entitlementId, userId);
+    }
+  } catch (err) {
+    console.warn("[auth/me] Claim-pending failed (non-fatal):", err);
+  }
+}
 
 export async function GET(request: NextRequest) {
   const token = await authenticateRequest(request);
@@ -23,6 +46,11 @@ export async function GET(request: NextRequest) {
       { error: "User profile not found", needsRegistration: true },
       { status: 404 },
     );
+  }
+
+  const email = (user.email as string | undefined) || token.email || null;
+  if (email) {
+    await claimPendingForUser(token.sub, email);
   }
 
   return NextResponse.json({ user });

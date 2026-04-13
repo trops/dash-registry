@@ -59,6 +59,8 @@ function entitlement(overrides: Partial<Entitlement> = {}): Entitlement {
         source: "manual",
         createdByUserId: "owner-1",
         createdAt: "2026-01-01T00:00:00Z",
+        claimedByUserId: null,
+        claimedAt: null,
         revokedAt: null,
         ...overrides,
     };
@@ -221,6 +223,57 @@ describe("checkEntitlement", () => {
         expect(mockClaim).not.toHaveBeenCalled();
     });
 
+    it("allows a user whose verified email matches an email-pending grant", async () => {
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "email",
+                granteeId: "alice@example.com",
+                granteeKey: "email#alice@example.com",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-123",
+            verifiedEmail: "alice@example.com",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(true);
+        if (result.allowed) expect(result.reason).toBe("entitled");
+    });
+
+    it("normalizes email casing when matching pending grants", async () => {
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "email",
+                granteeId: "alice@example.com",
+                granteeKey: "email#alice@example.com",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-123",
+            verifiedEmail: "  Alice@Example.COM  ",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(true);
+    });
+
+    it("ignores email-pending grants when no verified email is provided", async () => {
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "email",
+                granteeId: "alice@example.com",
+                granteeKey: "email#alice@example.com",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-123",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(false);
+    });
+
     it("bypasses the entire check when the feature flag is off", async () => {
         mockFlag.mockReturnValue(false);
         const result = await checkEntitlement({
@@ -296,7 +349,23 @@ describe("buildEntitlement", () => {
         expect(e.activeSeats).toBe(0);
         expect(e.expiresAt).toBeNull();
         expect(e.revokedAt).toBeNull();
+        expect(e.claimedByUserId).toBeNull();
+        expect(e.claimedAt).toBeNull();
         expect(e.entitlementId).toMatch(/^ent_/);
+    });
+
+    it("normalizes email grantees to lowercase + trimmed", () => {
+        const e = buildEntitlement({
+            packageScope: "acme",
+            packageName: "widget",
+            granteeType: "email",
+            granteeId: "  Alice@Example.COM ",
+            source: "invite",
+            createdByUserId: "owner-1",
+        });
+        expect(e.granteeType).toBe("email");
+        expect(e.granteeId).toBe("alice@example.com");
+        expect(e.granteeKey).toBe("email#alice@example.com");
     });
 
     it("preserves provided seats and expiresAt", () => {

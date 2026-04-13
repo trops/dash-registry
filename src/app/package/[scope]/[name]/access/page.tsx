@@ -21,13 +21,15 @@ interface Entitlement {
     packageScope: string;
     packageName: string;
     versionConstraint: string;
-    granteeType: "user" | "org";
+    granteeType: "user" | "org" | "email";
     granteeId: string;
     seats: number | null;
     activeSeats: number;
     expiresAt: string | null;
     source: string;
     createdAt: string;
+    claimedByUserId: string | null;
+    claimedAt: string | null;
     revokedAt: string | null;
 }
 
@@ -55,7 +57,7 @@ export default function AccessPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [grantUsername, setGrantUsername] = useState("");
+    const [grantEmail, setGrantEmail] = useState("");
     const [grantSeats, setGrantSeats] = useState<string>("");
     const [grantExpires, setGrantExpires] = useState<string>("");
     const [granting, setGranting] = useState(false);
@@ -120,34 +122,44 @@ export default function AccessPage() {
         e.preventDefault();
         setGrantError(null);
         setGrantSuccess(null);
-        if (!grantUsername.trim()) {
-            setGrantError("Username required");
+        const email = grantEmail.trim().toLowerCase();
+        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            setGrantError("Valid email address required");
             return;
         }
         setGranting(true);
         const token = await getAccessToken();
         try {
-            // 1. Resolve username → cognitoId
+            // 1. Try to resolve email → existing user. If match, create a
+            //    user-grant (immediately active). Otherwise fall through
+            //    to an email-pending grant. Either path looks the same
+            //    to the owner.
+            let body: Record<string, unknown>;
+            let friendlyName = email;
+
             const lookup = await fetch(
-                `/api/users/lookup?username=${encodeURIComponent(
-                    grantUsername.trim(),
-                )}`,
+                `/api/users/lookup?email=${encodeURIComponent(email)}`,
                 { headers: { Authorization: `Bearer ${token}` } },
             );
-            if (lookup.status === 404) {
-                setGrantError(`User "${grantUsername}" not found`);
-                setGranting(false);
-                return;
-            }
-            if (!lookup.ok) throw new Error(`Lookup failed ${lookup.status}`);
-            const user: UserLookupResult = await lookup.json();
 
-            // 2. Create entitlement
-            const body: Record<string, unknown> = {
-                granteeType: "user",
-                granteeId: user.cognitoId,
-                source: "manual",
-            };
+            if (lookup.ok) {
+                const user: UserLookupResult = await lookup.json();
+                body = {
+                    granteeType: "user",
+                    granteeId: user.cognitoId,
+                    source: "manual",
+                };
+                friendlyName = user.displayName || user.username;
+            } else if (lookup.status === 404) {
+                body = {
+                    granteeType: "email",
+                    granteeId: email,
+                    source: "invite",
+                };
+            } else {
+                throw new Error(`Lookup failed ${lookup.status}`);
+            }
+
             const seatsNum = grantSeats.trim() ? Number(grantSeats) : null;
             if (seatsNum && seatsNum > 0) body.seats = seatsNum;
             if (grantExpires) body.expiresAt = new Date(grantExpires).toISOString();
@@ -169,9 +181,11 @@ export default function AccessPage() {
             }
 
             setGrantSuccess(
-                `Granted access to ${user.displayName || user.username}`,
+                body.granteeType === "email"
+                    ? `Invited ${email} — access activates when they sign up and verify this email.`
+                    : `Granted access to ${friendlyName}`,
             );
-            setGrantUsername("");
+            setGrantEmail("");
             setGrantSeats("");
             setGrantExpires("");
             await load();
@@ -300,19 +314,21 @@ export default function AccessPage() {
                 <form onSubmit={handleGrant} className="space-y-4">
                     <div>
                         <label className="block text-sm text-gray-300 mb-1">
-                            Username
+                            Email
                         </label>
                         <input
-                            type="text"
-                            value={grantUsername}
-                            onChange={(e) => setGrantUsername(e.target.value)}
-                            placeholder="e.g. alice"
+                            type="email"
+                            value={grantEmail}
+                            onChange={(e) => setGrantEmail(e.target.value)}
+                            placeholder="alice@example.com"
                             disabled={granting}
                             className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">
-                            The user&apos;s dash-registry username (same as
-                            their package scope).
+                            If they&apos;re already registered, access
+                            activates immediately. If not, the grant waits
+                            and activates when they sign up with this
+                            email.
                         </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -355,7 +371,7 @@ export default function AccessPage() {
                     )}
                     <button
                         type="submit"
-                        disabled={granting || !grantUsername.trim()}
+                        disabled={granting || !grantEmail.trim()}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 rounded text-white text-sm font-medium transition-colors"
                     >
                         {granting ? "Granting..." : "Grant access"}
@@ -395,18 +411,34 @@ function EntitlementRow({
     entitlement: Entitlement;
     onRevoke: (id: string) => void;
 }) {
+    const isPending = e.granteeType === "email";
     return (
         <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-3">
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-sm text-gray-200">
-                    <span className="text-xs uppercase tracking-wide text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
-                        {e.granteeType}
+                    <span
+                        className={`text-xs uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                            isPending
+                                ? "text-amber-400 bg-amber-900/30"
+                                : "text-gray-500 bg-gray-800"
+                        }`}
+                    >
+                        {isPending ? "pending invite" : e.granteeType}
                     </span>
-                    <span className="font-mono text-xs truncate">
+                    <span
+                        className={`${
+                            isPending ? "" : "font-mono"
+                        } text-xs truncate`}
+                    >
                         {e.granteeId}
                     </span>
                 </div>
-                <div className="text-xs text-gray-500 mt-1 flex items-center gap-3">
+                <div className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
+                    {isPending && (
+                        <span className="text-amber-500/80">
+                            Activates when they sign up and verify this email
+                        </span>
+                    )}
                     <span>
                         seats:{" "}
                         {e.seats == null

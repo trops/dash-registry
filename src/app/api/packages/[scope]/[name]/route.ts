@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getPackage,
   getPackageVersions,
+  getUserByCognitoId,
   updatePackage,
   deletePackage,
   deletePackageVersions,
@@ -37,8 +38,12 @@ export async function GET(
           { status: 404 },
         );
       }
+      const userRecord = await getUserByCognitoId(token.sub);
+      const verifiedEmail =
+        (userRecord?.email as string | undefined) || token.email || null;
       const decision = await checkEntitlement({
         userId: token.sub,
+        verifiedEmail,
         pkg: {
           scope,
           name,

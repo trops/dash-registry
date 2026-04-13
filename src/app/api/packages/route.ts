@@ -9,7 +9,7 @@
  * (via direct grant, org membership, or ownership).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { listPackages } from "@/lib/db";
+import { listPackages, getUserByCognitoId } from "@/lib/db";
 import { authenticateRequest } from "@/lib/auth";
 import { filterReadableByUser } from "@/lib/entitlement";
 
@@ -31,11 +31,20 @@ export async function GET(request: NextRequest) {
         // Optional auth — identity used only to widen what the user can see.
         const token = await authenticateRequest(request);
         const userId = token?.sub || null;
+        let verifiedEmail: string | null = null;
+        if (userId) {
+            const userRecord = await getUserByCognitoId(userId);
+            verifiedEmail =
+                (userRecord?.email as string | undefined) ||
+                token?.email ||
+                null;
+        }
 
         const rawPackages = await listPackages({ search, category, type, appOrigin, providerTypes });
         const packages = (await filterReadableByUser(
             rawPackages as Parameters<typeof filterReadableByUser>[0],
             userId,
+            verifiedEmail,
         )) as typeof rawPackages;
 
         // Sort alphabetically by scope/name

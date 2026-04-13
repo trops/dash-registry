@@ -75,6 +75,24 @@ export async function getUserByUsername(username: string) {
   return result.Items?.[0] || null;
 }
 
+/**
+ * Find a user by email address. Uses ScanCommand since Users has no
+ * email GSI — fine at current scale (single-digit thousands of users),
+ * worth revisiting later.
+ */
+export async function getUserByEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: TABLES.USERS,
+      FilterExpression: "email = :e",
+      ExpressionAttributeValues: { ":e": normalized },
+      Limit: 1,
+    }),
+  );
+  return result.Items?.[0] || null;
+}
+
 export async function getUserByCognitoId(cognitoId: string) {
   const result = await docClient.send(
     new GetCommand({
@@ -445,21 +463,33 @@ export async function listOrgsForUser(userId: string) {
 
 // --- Entitlement operations ---
 
+/**
+ * granteeType "email" is used for pre-invites — entitlements granted to
+ * an email address before the recipient has signed up. When the recipient
+ * signs in with a verified email matching the entitlement, it's either
+ * matched on every install (via checkEntitlement) or converted to a
+ * granteeType "user" record via the claim flow.
+ */
 export interface Entitlement {
   entitlementId: string;
   packageScope: string;
   packageName: string;
   packageKey: string; // GSI PK: "scope#name"
   versionConstraint: string; // "*" or semver range
-  granteeType: "user" | "org";
-  granteeId: string;
-  granteeKey: string; // GSI PK: "user#userId" or "org#orgId"
+  granteeType: "user" | "org" | "email";
+  granteeId: string; // userId | orgId | lowercased-email
+  granteeKey: string; // GSI PK: "user#userId" | "org#orgId" | "email#email"
   seats: number | null;
   activeSeats: number;
   expiresAt: string | null;
   source: string; // "publisher", "manual", "invite", ...
   createdByUserId: string;
   createdAt: string;
+  // Set when an email grant is claimed by a signed-in user. Retained for
+  // audit so the owner can see "this email grant was claimed by @alice
+  // on 2026-04-13".
+  claimedByUserId: string | null;
+  claimedAt: string | null;
   revokedAt: string | null;
 }
 
@@ -496,7 +526,7 @@ export async function listEntitlementsForPackage(
 }
 
 export async function listEntitlementsForGrantee(
-  granteeType: "user" | "org",
+  granteeType: "user" | "org" | "email",
   granteeId: string,
 ) {
   const granteeKey = `${granteeType}#${granteeId}`;
@@ -523,6 +553,46 @@ export async function revokeEntitlement(entitlementId: string) {
     }),
   );
   return result.Attributes as Entitlement | undefined;
+}
+
+/**
+ * Convert an email-pending entitlement into a user entitlement. Called
+ * during sign-in when an email entitlement matches the user's verified
+ * email. The granteeKey is rewritten so the ByGrantee GSI now returns
+ * this entitlement under the user's cognitoId.
+ *
+ * ConditionExpression guards against double-claim and against claiming
+ * revoked entitlements.
+ */
+export async function claimEmailEntitlement(
+  entitlementId: string,
+  userId: string,
+) {
+  const now = new Date().toISOString();
+  try {
+    const result = await docClient.send(
+      new UpdateCommand({
+        TableName: TABLES.ENTITLEMENTS,
+        Key: { entitlementId },
+        UpdateExpression:
+          "SET granteeType = :u, granteeId = :uid, granteeKey = :gk, claimedByUserId = :uid, claimedAt = :now",
+        ConditionExpression:
+          "attribute_exists(entitlementId) AND granteeType = :e AND claimedByUserId = :null AND revokedAt = :null",
+        ExpressionAttributeValues: {
+          ":u": "user",
+          ":e": "email",
+          ":uid": userId,
+          ":gk": `user#${userId}`,
+          ":now": now,
+          ":null": null,
+        },
+        ReturnValues: "ALL_NEW",
+      }),
+    );
+    return result.Attributes as Entitlement | undefined;
+  } catch {
+    return null;
+  }
 }
 
 /**
