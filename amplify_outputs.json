@@ -79,6 +79,10 @@
     "packagesTable": "dash-registry-Packages",
     "packageVersionsTable": "dash-registry-PackageVersions",
     "userLibraryTable": "dash-registry-UserLibrary",
-    "deviceCodesTable": "dash-registry-DeviceCodes"
+    "deviceCodesTable": "dash-registry-DeviceCodes",
+    "orgsTable": "dash-registry-Orgs",
+    "orgMembershipsTable": "dash-registry-OrgMemberships",
+    "entitlementsTable": "dash-registry-Entitlements",
+    "installLogTable": "dash-registry-InstallLog"
   }
 }
