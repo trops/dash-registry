@@ -108,6 +108,11 @@ describe("logInstallAttempt", () => {
     });
 
     it("swallows DB errors — logging must never block install responses", async () => {
+        // The real logInstallAttempt logs to console.error on failure.
+        // Silence it here so the test run output stays clean.
+        const errSpy = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         mockPut.mockRejectedValueOnce(new Error("dynamo down"));
         await expect(
             logInstallAttempt({
@@ -121,5 +126,7 @@ describe("logInstallAttempt", () => {
                 userAgent: null,
             }),
         ).resolves.toBeUndefined();
+        expect(errSpy).toHaveBeenCalledOnce();
+        errSpy.mockRestore();
     });
 });
