@@ -76,6 +76,76 @@ deviceCodesTable.addGlobalSecondaryIndex({
     partitionKey: { name: "userCode", type: dynamodb.AttributeType.STRING },
 });
 
+// Orgs table — PK: orgId
+// GSI "slug-index": lookup by unique slug
+const orgsTable = new dynamodb.Table(dataStack, "OrgsTable", {
+    tableName: "dash-registry-Orgs",
+    partitionKey: { name: "orgId", type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    removalPolicy: RemovalPolicy.DESTROY,
+});
+
+orgsTable.addGlobalSecondaryIndex({
+    indexName: "slug-index",
+    partitionKey: { name: "slug", type: dynamodb.AttributeType.STRING },
+});
+
+// OrgMemberships table — PK: orgId, SK: userId
+// GSI "ByUser": lookup an individual user's org memberships
+const orgMembershipsTable = new dynamodb.Table(
+    dataStack,
+    "OrgMembershipsTable",
+    {
+        tableName: "dash-registry-OrgMemberships",
+        partitionKey: { name: "orgId", type: dynamodb.AttributeType.STRING },
+        sortKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: RemovalPolicy.DESTROY,
+    },
+);
+
+orgMembershipsTable.addGlobalSecondaryIndex({
+    indexName: "ByUser",
+    partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "orgId", type: dynamodb.AttributeType.STRING },
+});
+
+// Entitlements table — PK: entitlementId
+// GSI "ByPackage": list all entitlements for a given package
+// GSI "ByGrantee": list all entitlements granted to a user or org
+const entitlementsTable = new dynamodb.Table(dataStack, "EntitlementsTable", {
+    tableName: "dash-registry-Entitlements",
+    partitionKey: {
+        name: "entitlementId",
+        type: dynamodb.AttributeType.STRING,
+    },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    removalPolicy: RemovalPolicy.DESTROY,
+});
+
+entitlementsTable.addGlobalSecondaryIndex({
+    indexName: "ByPackage",
+    partitionKey: { name: "packageKey", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
+});
+
+entitlementsTable.addGlobalSecondaryIndex({
+    indexName: "ByGrantee",
+    partitionKey: { name: "granteeKey", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
+});
+
+// InstallLog table — PK: userId, SK: requestedAt#entitlementId
+// TTL: stored in `expiresAt` epoch seconds (90-day retention)
+const installLogTable = new dynamodb.Table(dataStack, "InstallLogTable", {
+    tableName: "dash-registry-InstallLog",
+    partitionKey: { name: "userId", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "sk", type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    timeToLiveAttribute: "expiresAt",
+    removalPolicy: RemovalPolicy.DESTROY,
+});
+
 // --- Outputs ---
 
 backend.addOutput({
@@ -85,5 +155,9 @@ backend.addOutput({
         packageVersionsTable: packageVersionsTable.tableName,
         userLibraryTable: userLibraryTable.tableName,
         deviceCodesTable: deviceCodesTable.tableName,
+        orgsTable: orgsTable.tableName,
+        orgMembershipsTable: orgMembershipsTable.tableName,
+        entitlementsTable: entitlementsTable.tableName,
+        installLogTable: installLogTable.tableName,
     },
 });

@@ -13,9 +13,10 @@ import {
 } from "@/lib/db";
 import { deletePackageZip } from "@/lib/s3";
 import { authenticateRequest } from "@/lib/auth";
+import { checkEntitlement } from "@/lib/entitlement";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { scope: string; name: string } },
 ) {
   try {
@@ -26,9 +27,32 @@ export async function GET(
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    // Only return public packages
+    // Private packages: only visible to owner / entitled users.
+    // Return 404 (not 403) to avoid leaking existence.
     if (pkg.visibility === "private") {
-      return NextResponse.json({ error: "Package not found" }, { status: 404 });
+      const token = await authenticateRequest(request);
+      if (!token) {
+        return NextResponse.json(
+          { error: "Package not found" },
+          { status: 404 },
+        );
+      }
+      const decision = await checkEntitlement({
+        userId: token.sub,
+        pkg: {
+          scope,
+          name,
+          visibility: pkg.visibility as string,
+          ownerId: (pkg.ownerId || pkg.author) as string | undefined,
+        },
+        version: (pkg.latestVersion as string) || "*",
+      });
+      if (!decision.allowed) {
+        return NextResponse.json(
+          { error: "Package not found" },
+          { status: 404 },
+        );
+      }
     }
 
     // Get version history

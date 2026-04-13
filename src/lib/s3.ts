@@ -90,3 +90,19 @@ export async function getDownloadUrl(
 
   return url;
 }
+
+/**
+ * Generate a short-lived pre-signed download URL for a private package.
+ *
+ * Private package URLs deliberately use a 60-second TTL so that, even if a
+ * URL leaks (logged, screenshotted, mistakenly shared), the access window
+ * is too short for it to matter. The recipient must re-request through the
+ * registry — which re-checks entitlements — to get a fresh URL.
+ */
+export async function getPrivatePackageSignedUrl(
+  scope: string,
+  name: string,
+  version: string,
+): Promise<string> {
+  return getDownloadUrl(scope, name, version, 60);
+}

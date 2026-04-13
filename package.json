@@ -9,8 +9,10 @@
         "start": "next start",
         "build-index": "node scripts/build-index.js",
         "lint": "next lint",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "validate": "node scripts/validate-packages.js",
-        "check": "npm run validate && npm run lint && npm run build",
+        "check": "npm run validate && npm run lint && npm run test && npm run build",
         "preversion": "npm run check",
         "create-project": "node scripts/create-project.js",
         "migrate": "node scripts/migrate-to-dynamo.js",
@@ -49,6 +51,7 @@
         "eslint-config-next": "^14.2.35",
         "postcss": "^8.4.0",
         "tailwindcss": "^3.4.0",
-        "typescript": "^5.4.0"
+        "typescript": "^5.4.0",
+        "vitest": "^4.1.4"
     }
 }
