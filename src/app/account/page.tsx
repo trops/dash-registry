@@ -547,12 +547,14 @@ export default function AccountPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            <a
-                              href={`/package/${pkg.scope}/${pkg.name}/access`}
-                              className="px-3 py-1.5 text-xs rounded border border-indigo-500/40 text-indigo-300 hover:text-white hover:bg-indigo-600/20 transition-colors"
-                            >
-                              Access
-                            </a>
+                            {pkg.visibility === "private" && (
+                              <a
+                                href={`/package/${pkg.scope}/${pkg.name}/access`}
+                                className="px-3 py-1.5 text-xs rounded border border-indigo-500/40 text-indigo-300 hover:text-white hover:bg-indigo-600/20 transition-colors"
+                              >
+                                Access
+                              </a>
+                            )}
                             <button
                               type="button"
                               onClick={() => startEditing(pkg)}

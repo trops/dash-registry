@@ -107,6 +107,7 @@ export default async function PackageDetailPage({
                             scope={pkg.scope}
                             name={pkg.name}
                             ownerId={pkg.ownerId}
+                            visibility={pkg.visibility}
                         />
                     </div>
                 )}

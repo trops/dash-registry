@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Renders a "Manage Access" link on the package detail page — but only
- * for the package owner. Any other viewer (anon or non-owner signed in)
- * sees nothing.
+ * Renders a "Manage Access" link on the package detail page — only for
+ * the package owner viewing their own private package. Public packages
+ * don't have meaningful entitlements (anyone can install), so the link
+ * is hidden even from the owner there to avoid confusion.
  */
 import Link from "next/link";
 import { useAuth } from "@/components/AuthContext";
@@ -12,12 +13,19 @@ interface Props {
     scope: string;
     name: string;
     ownerId: string;
+    visibility?: string;
 }
 
-export function ManageAccessLink({ scope, name, ownerId }: Props) {
+export function ManageAccessLink({
+    scope,
+    name,
+    ownerId,
+    visibility,
+}: Props) {
     const { profile, isAuthenticated } = useAuth();
     if (!isAuthenticated || !profile) return null;
     if (profile.cognitoId !== ownerId) return null;
+    if (visibility !== "private") return null;
 
     return (
         <Link
