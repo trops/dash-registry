@@ -62,15 +62,27 @@ export async function POST(
     const body = await request.json();
     const { granteeType, granteeId, seats, expiresAt, versionConstraint, source } =
       body || {};
-    if (!granteeType || (granteeType !== "user" && granteeType !== "org")) {
+    if (
+      !granteeType ||
+      !["user", "org", "email"].includes(granteeType)
+    ) {
       return NextResponse.json(
-        { error: "granteeType must be 'user' or 'org'" },
+        { error: "granteeType must be 'user', 'org', or 'email'" },
         { status: 400 },
       );
     }
     if (!granteeId || typeof granteeId !== "string") {
       return NextResponse.json(
         { error: "granteeId is required" },
+        { status: 400 },
+      );
+    }
+    if (
+      granteeType === "email" &&
+      !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(granteeId.trim())
+    ) {
+      return NextResponse.json(
+        { error: "granteeId must be a valid email address" },
         { status: 400 },
       );
     }

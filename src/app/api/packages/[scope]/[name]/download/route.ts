@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { getPackage, putUserLibraryEntry } from "@/lib/db";
+import { getPackage, getUserByCognitoId, putUserLibraryEntry } from "@/lib/db";
 import { getDownloadUrl, getPrivatePackageSignedUrl } from "@/lib/s3";
 import { checkEntitlement } from "@/lib/entitlement";
 import {
@@ -53,11 +53,18 @@ export async function GET(
             searchParams.get("version") || (pkg.latestVersion as string);
 
         // 4. Entitlement check (no-op when feature flag is off — public
-        //    packages always pass)
+        //    packages always pass). We resolve the user's registered email
+        //    from our own Users table; that row was created at register
+        //    time using the verified email from Cognito, so we trust it
+        //    to match email-pending entitlements.
         const ipHash = hashIp(extractClientIp(request.headers));
         const userAgent = request.headers.get("user-agent") || null;
+        const userRecord = await getUserByCognitoId(token.sub);
+        const verifiedEmail =
+            (userRecord?.email as string | undefined) || token.email || null;
         const entitlement = await checkEntitlement({
             userId: token.sub,
+            verifiedEmail,
             pkg: {
                 scope,
                 name,
