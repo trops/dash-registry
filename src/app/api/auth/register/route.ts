@@ -66,11 +66,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create user profile
+        // Create user profile. Email is normalized (lowercased + trimmed)
+        // so that email-based entitlement lookups match regardless of
+        // how the registration value was cased. Access tokens sometimes
+        // omit email — /api/auth/me will backfill from the token on a
+        // later request if that happens.
+        const normalizedEmail = (token.email || "").trim().toLowerCase();
         const user = await createUser({
             cognitoId: token.sub,
             username,
-            email: token.email || "",
+            email: normalizedEmail,
             displayName: displayName || username,
             githubUsername: githubUsername || undefined,
         });
