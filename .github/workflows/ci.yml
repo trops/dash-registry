@@ -1,0 +1,35 @@
+name: CI
+
+# Runs on every PR and on every push to main so we catch lockfile/test/build
+# failures before they hit Amplify. Mirrors exactly what Amplify will run,
+# using the same `npm ci` strict mode on Linux.
+
+on:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+
+jobs:
+    build:
+        name: Lint + Test + Build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            - name: Install dependencies (npm ci)
+              run: npm ci
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test
+              run: npm test
+
+            - name: Build
+              run: npm run build
