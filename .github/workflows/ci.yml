@@ -22,8 +22,13 @@ jobs:
                   node-version: "20"
                   cache: "npm"
 
-            - name: Install dependencies (npm ci)
-              run: npm ci
+            # We use `npm install` (not `npm ci`) because vitest pulls in
+            # @rolldown/binding-wasm32-wasi → @emnapi/core,@emnapi/runtime as
+            # wasm-CPU optional deps that npm on macOS will not write to the
+            # lockfile. `npm ci`'s strict-lock requirement then fails on Linux.
+            # The --no-audit/--no-fund flags keep output tidy and faster.
+            - name: Install dependencies
+              run: npm install --no-audit --no-fund
 
             - name: Lint
               run: npm run lint

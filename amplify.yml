@@ -4,7 +4,12 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm ci
+            # `npm install` instead of `npm ci` — vitest's transitive
+            # @rolldown/binding-wasm32-wasi pulls in wasm-CPU optional deps
+            # that npm on macOS won't lock, so strict `npm ci` fails on
+            # Linux. Trade strict-lock reproducibility for cross-platform
+            # builds. See dash-registry PR #61.
+            - npm install --no-audit --no-fund
         build:
           commands:
             - npm run build
