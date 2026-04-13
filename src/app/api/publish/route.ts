@@ -113,7 +113,16 @@ export async function POST(request: NextRequest) {
             `${request.headers.get("x-forwarded-proto") || "https"}://${request.headers.get("host")}`;
         const downloadUrl = `${registryBaseUrl}/api/packages/${scope}/${manifest.name}/download?version=${manifest.version}`;
 
-        // 9. Create/update Package record
+        // 9. Determine visibility (respect manifest; default public)
+        //    On update, the existing visibility wins unless the manifest
+        //    explicitly specifies — prevents accidental flips.
+        const manifestVisibility = manifest.visibility;
+        const visibility =
+            manifestVisibility === "private" || manifestVisibility === "public"
+                ? manifestVisibility
+                : (existing?.visibility as string | undefined) || "public";
+
+        // 10. Create/update Package record
         const now = new Date().toISOString();
         const packageRecord: Record<string, unknown> = {
             scope,
@@ -127,7 +136,7 @@ export async function POST(request: NextRequest) {
             icon: manifest.icon || "",
             latestVersion: manifest.version,
             repository: manifest.repository || "",
-            visibility: "public",
+            visibility,
             ownerId: token.sub,
             downloadUrl,
             widgets: manifest.widgets || [],
@@ -145,7 +154,7 @@ export async function POST(request: NextRequest) {
         }
         await putPackage(packageRecord);
 
-        // 10. Create PackageVersion record
+        // 11. Create PackageVersion record
         const versionRecord: Record<string, unknown> = {
             packageScope: scope,
             packageName: manifest.name,
@@ -164,7 +173,7 @@ export async function POST(request: NextRequest) {
         }
         await putPackageVersion(versionRecord);
 
-        // 11. Return success
+        // 12. Return success
         const registryUrl = `${registryBaseUrl}/package/${scope}/${manifest.name}`;
 
         return NextResponse.json({

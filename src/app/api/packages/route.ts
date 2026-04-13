@@ -1,12 +1,17 @@
 /**
  * GET /api/packages
  *
- * List all public packages. Replaces the static registry-index.json.
+ * List packages visible to the caller. Replaces the static registry-index.json.
  * Supports query params: ?search=, ?category=, ?type=
- * Public, no auth required.
+ *
+ * Auth is optional here — anonymous callers only see public packages, but an
+ * authenticated caller also sees private packages they have an entitlement for
+ * (via direct grant, org membership, or ownership).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { listPackages } from "@/lib/db";
+import { authenticateRequest } from "@/lib/auth";
+import { filterReadableByUser } from "@/lib/entitlement";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +28,15 @@ export async function GET(request: NextRequest) {
             ? providerTypesParam.split(",").map((t) => t.trim()).filter(Boolean)
             : undefined;
 
-        const packages = await listPackages({ search, category, type, appOrigin, providerTypes });
+        // Optional auth — identity used only to widen what the user can see.
+        const token = await authenticateRequest(request);
+        const userId = token?.sub || null;
+
+        const rawPackages = await listPackages({ search, category, type, appOrigin, providerTypes });
+        const packages = (await filterReadableByUser(
+            rawPackages as Parameters<typeof filterReadableByUser>[0],
+            userId,
+        )) as typeof rawPackages;
 
         // Sort alphabetically by scope/name
         packages.sort((a, b) => {

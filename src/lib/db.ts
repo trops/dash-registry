@@ -46,6 +46,19 @@ export const TABLES = {
     process.env.DEVICE_CODES_TABLE ||
     custom?.deviceCodesTable ||
     "dash-registry-DeviceCodes",
+  ORGS: process.env.ORGS_TABLE || custom?.orgsTable || "dash-registry-Orgs",
+  ORG_MEMBERSHIPS:
+    process.env.ORG_MEMBERSHIPS_TABLE ||
+    custom?.orgMembershipsTable ||
+    "dash-registry-OrgMemberships",
+  ENTITLEMENTS:
+    process.env.ENTITLEMENTS_TABLE ||
+    custom?.entitlementsTable ||
+    "dash-registry-Entitlements",
+  INSTALL_LOG:
+    process.env.INSTALL_LOG_TABLE ||
+    custom?.installLogTable ||
+    "dash-registry-InstallLog",
 };
 
 // --- User operations ---
@@ -337,4 +350,227 @@ export async function getUserLibrary(userId: string) {
     }),
   );
   return result.Items || [];
+}
+
+// --- Org operations ---
+
+export interface Org {
+  orgId: string;
+  slug: string;
+  name: string;
+  ownerUserId: string;
+  createdAt: string;
+}
+
+export async function putOrg(org: Org) {
+  await docClient.send(
+    new PutCommand({ TableName: TABLES.ORGS, Item: org }),
+  );
+}
+
+export async function getOrg(orgId: string) {
+  const result = await docClient.send(
+    new GetCommand({ TableName: TABLES.ORGS, Key: { orgId } }),
+  );
+  return (result.Item as Org | undefined) || null;
+}
+
+export async function getOrgBySlug(slug: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ORGS,
+      IndexName: "slug-index",
+      KeyConditionExpression: "slug = :s",
+      ExpressionAttributeValues: { ":s": slug },
+      Limit: 1,
+    }),
+  );
+  return (result.Items?.[0] as Org | undefined) || null;
+}
+
+export interface OrgMembership {
+  orgId: string;
+  userId: string;
+  role: "owner" | "admin" | "member";
+  joinedAt: string;
+}
+
+export async function putOrgMembership(m: OrgMembership) {
+  await docClient.send(
+    new PutCommand({ TableName: TABLES.ORG_MEMBERSHIPS, Item: m }),
+  );
+}
+
+export async function getOrgMembership(orgId: string, userId: string) {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLES.ORG_MEMBERSHIPS,
+      Key: { orgId, userId },
+    }),
+  );
+  return (result.Item as OrgMembership | undefined) || null;
+}
+
+export async function deleteOrgMembership(orgId: string, userId: string) {
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLES.ORG_MEMBERSHIPS,
+      Key: { orgId, userId },
+    }),
+  );
+}
+
+export async function listOrgMembers(orgId: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ORG_MEMBERSHIPS,
+      KeyConditionExpression: "orgId = :o",
+      ExpressionAttributeValues: { ":o": orgId },
+    }),
+  );
+  return (result.Items as OrgMembership[] | undefined) || [];
+}
+
+export async function listOrgsForUser(userId: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ORG_MEMBERSHIPS,
+      IndexName: "ByUser",
+      KeyConditionExpression: "userId = :u",
+      ExpressionAttributeValues: { ":u": userId },
+    }),
+  );
+  return (result.Items as OrgMembership[] | undefined) || [];
+}
+
+// --- Entitlement operations ---
+
+export interface Entitlement {
+  entitlementId: string;
+  packageScope: string;
+  packageName: string;
+  packageKey: string; // GSI PK: "scope#name"
+  versionConstraint: string; // "*" or semver range
+  granteeType: "user" | "org";
+  granteeId: string;
+  granteeKey: string; // GSI PK: "user#userId" or "org#orgId"
+  seats: number | null;
+  activeSeats: number;
+  expiresAt: string | null;
+  source: string; // "publisher", "manual", "invite", ...
+  createdByUserId: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
+export async function putEntitlement(e: Entitlement) {
+  await docClient.send(
+    new PutCommand({ TableName: TABLES.ENTITLEMENTS, Item: e }),
+  );
+}
+
+export async function getEntitlement(entitlementId: string) {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLES.ENTITLEMENTS,
+      Key: { entitlementId },
+    }),
+  );
+  return (result.Item as Entitlement | undefined) || null;
+}
+
+export async function listEntitlementsForPackage(
+  scope: string,
+  name: string,
+) {
+  const packageKey = `${scope}#${name}`;
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ENTITLEMENTS,
+      IndexName: "ByPackage",
+      KeyConditionExpression: "packageKey = :pk",
+      ExpressionAttributeValues: { ":pk": packageKey },
+    }),
+  );
+  return (result.Items as Entitlement[] | undefined) || [];
+}
+
+export async function listEntitlementsForGrantee(
+  granteeType: "user" | "org",
+  granteeId: string,
+) {
+  const granteeKey = `${granteeType}#${granteeId}`;
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ENTITLEMENTS,
+      IndexName: "ByGrantee",
+      KeyConditionExpression: "granteeKey = :gk",
+      ExpressionAttributeValues: { ":gk": granteeKey },
+    }),
+  );
+  return (result.Items as Entitlement[] | undefined) || [];
+}
+
+export async function revokeEntitlement(entitlementId: string) {
+  const now = new Date().toISOString();
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLES.ENTITLEMENTS,
+      Key: { entitlementId },
+      UpdateExpression: "SET revokedAt = :r",
+      ExpressionAttributeValues: { ":r": now },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+  return result.Attributes as Entitlement | undefined;
+}
+
+/**
+ * Atomically increment activeSeats when seats is bounded.
+ * Returns true if seat was claimed, false if already at capacity or revoked.
+ */
+export async function claimEntitlementSeat(entitlementId: string) {
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: TABLES.ENTITLEMENTS,
+        Key: { entitlementId },
+        UpdateExpression: "ADD activeSeats :one",
+        ConditionExpression:
+          "attribute_exists(entitlementId) AND revokedAt = :null AND (attribute_not_exists(seats) OR seats = :null OR activeSeats < seats)",
+        ExpressionAttributeValues: { ":one": 1, ":null": null },
+      }),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// --- InstallLog operations ---
+
+export interface InstallLogEntry {
+  userId: string;
+  sk: string; // "{requestedAt}#{entitlementId|public}"
+  packageScope: string;
+  packageName: string;
+  version: string;
+  result:
+    | "granted_public"
+    | "granted_owner"
+    | "granted_entitlement"
+    | "denied_no_entitlement"
+    | "denied_seats_exhausted"
+    | "denied_expired";
+  entitlementId: string | null;
+  ipHash: string | null;
+  userAgent: string | null;
+  requestedAt: string;
+  expiresAt: number; // epoch seconds, DynamoDB TTL
+}
+
+export async function putInstallLog(entry: InstallLogEntry) {
+  await docClient.send(
+    new PutCommand({ TableName: TABLES.INSTALL_LOG, Item: entry }),
+  );
 }
