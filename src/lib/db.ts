@@ -124,7 +124,11 @@ export async function createUser(user: {
 
 export async function updateUser(
   cognitoId: string,
-  updates: { displayName?: string; githubUsername?: string },
+  updates: {
+    displayName?: string;
+    githubUsername?: string;
+    email?: string;
+  },
 ) {
   const now = new Date().toISOString();
   const expressionParts: string[] = ["#updatedAt = :updatedAt"];

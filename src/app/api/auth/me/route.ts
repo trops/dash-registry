@@ -40,12 +40,25 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const user = await getUserByCognitoId(token.sub);
+  let user = await getUserByCognitoId(token.sub);
   if (!user) {
     return NextResponse.json(
       { error: "User profile not found", needsRegistration: true },
       { status: 404 },
     );
+  }
+
+  // Backfill email on the user record when registration missed it.
+  // Early registrations used `token.email || ""` and some access tokens
+  // don't include email, so the stored value was empty. If we can now
+  // see a token-provided email, persist it — this also enables the
+  // email-pending entitlement claim flow below to succeed.
+  const storedEmail = (user.email as string | undefined) || "";
+  if (!storedEmail && token.email) {
+    const updated = await updateUser(token.sub, {
+      email: token.email.trim().toLowerCase(),
+    });
+    if (updated) user = updated;
   }
 
   const email = (user.email as string | undefined) || token.email || null;
