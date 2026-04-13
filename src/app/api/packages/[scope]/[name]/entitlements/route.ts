@@ -12,8 +12,38 @@ import {
   getPackage,
   putEntitlement,
   listEntitlementsForPackage,
+  getUserByCognitoId,
+  type Entitlement,
 } from "@/lib/db";
 import { buildEntitlement } from "@/lib/entitlement";
+
+/**
+ * Resolve the handful of unique user-type grantees in an entitlement list
+ * to their display info (username, displayName, avatarUrl). Returns a
+ * map keyed by cognitoId so callers can attach grantee details to each
+ * entitlement without rendering raw UUIDs.
+ */
+async function resolveUserGrantees(entitlements: Entitlement[]) {
+  const userIds = new Set<string>();
+  for (const e of entitlements) {
+    if (e.granteeType === "user") userIds.add(e.granteeId);
+    if (e.claimedByUserId) userIds.add(e.claimedByUserId);
+  }
+  const map: Record<string, { username: string; displayName?: string; avatarUrl?: string }> = {};
+  await Promise.all(
+    Array.from(userIds).map(async (id) => {
+      const user = await getUserByCognitoId(id);
+      if (user) {
+        map[id] = {
+          username: user.username as string,
+          displayName: user.displayName as string | undefined,
+          avatarUrl: user.avatarUrl as string | undefined,
+        };
+      }
+    }),
+  );
+  return map;
+}
 
 async function requireOwner(
   request: NextRequest,
@@ -125,7 +155,15 @@ export async function GET(
 
   try {
     const entitlements = await listEntitlementsForPackage(scope, name);
-    return NextResponse.json({ entitlements });
+    const granteeInfo = await resolveUserGrantees(entitlements);
+    const enriched = entitlements.map((e) => ({
+      ...e,
+      grantee: e.granteeType === "user" ? granteeInfo[e.granteeId] || null : null,
+      claimedByUser: e.claimedByUserId
+        ? granteeInfo[e.claimedByUserId] || null
+        : null,
+    }));
+    return NextResponse.json({ entitlements: enriched });
   } catch (err) {
     console.error("[API /entitlements GET] Error:", err);
     return NextResponse.json(

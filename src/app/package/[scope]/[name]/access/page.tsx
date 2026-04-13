@@ -16,6 +16,12 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthContext";
 
+interface GranteeDisplay {
+    username: string;
+    displayName?: string;
+    avatarUrl?: string;
+}
+
 interface Entitlement {
     entitlementId: string;
     packageScope: string;
@@ -31,6 +37,9 @@ interface Entitlement {
     claimedByUserId: string | null;
     claimedAt: string | null;
     revokedAt: string | null;
+    // Enriched by the GET endpoint for display only.
+    grantee?: GranteeDisplay | null;
+    claimedByUser?: GranteeDisplay | null;
 }
 
 interface PackageDetail {
@@ -412,46 +421,73 @@ function EntitlementRow({
     onRevoke: (id: string) => void;
 }) {
     const isPending = e.granteeType === "email";
+    const isUser = e.granteeType === "user";
+    const g = e.grantee;
+    // Prefer human-friendly labels: displayName → @username → email (for
+    // pending) → raw id (fallback). The raw cognitoId is only shown when we
+    // somehow couldn't resolve the user (e.g. deleted account).
+    const primaryLabel =
+        isUser && g
+            ? g.displayName || `@${g.username}`
+            : isPending
+            ? e.granteeId
+            : e.granteeId;
+    const secondaryLabel = isUser && g && g.displayName ? `@${g.username}` : null;
+
     return (
         <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-3">
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-sm text-gray-200">
-                    <span
-                        className={`text-xs uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                            isPending
-                                ? "text-amber-400 bg-amber-900/30"
-                                : "text-gray-500 bg-gray-800"
-                        }`}
-                    >
-                        {isPending ? "pending invite" : e.granteeType}
-                    </span>
-                    <span
-                        className={`${
-                            isPending ? "" : "font-mono"
-                        } text-xs truncate`}
-                    >
-                        {e.granteeId}
-                    </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
-                    {isPending && (
-                        <span className="text-amber-500/80">
-                            Activates when they sign up and verify this email
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+                {isUser && g?.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={g.avatarUrl}
+                        alt=""
+                        className="w-8 h-8 rounded-full flex-shrink-0"
+                    />
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                        {isPending ? "@" : isUser ? "\u00B7" : "O"}
+                    </div>
+                )}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-sm text-gray-200">
+                        <span
+                            className={`text-xs uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                                isPending
+                                    ? "text-amber-400 bg-amber-900/30"
+                                    : "text-gray-500 bg-gray-800"
+                            }`}
+                        >
+                            {isPending ? "pending invite" : e.granteeType}
                         </span>
-                    )}
-                    <span>
-                        seats:{" "}
-                        {e.seats == null
-                            ? "unlimited"
-                            : `${e.activeSeats}/${e.seats}`}
-                    </span>
-                    <span>
-                        expires:{" "}
-                        {e.expiresAt
-                            ? new Date(e.expiresAt).toLocaleDateString()
-                            : "never"}
-                    </span>
-                    <span>source: {e.source}</span>
+                        <span className="text-sm truncate">{primaryLabel}</span>
+                        {secondaryLabel && (
+                            <span className="text-xs text-gray-500 truncate">
+                                {secondaryLabel}
+                            </span>
+                        )}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-3 flex-wrap">
+                        {isPending && (
+                            <span className="text-amber-500/80">
+                                Activates when they sign up and verify this
+                                email
+                            </span>
+                        )}
+                        <span>
+                            seats:{" "}
+                            {e.seats == null
+                                ? "unlimited"
+                                : `${e.activeSeats}/${e.seats}`}
+                        </span>
+                        <span>
+                            expires:{" "}
+                            {e.expiresAt
+                                ? new Date(e.expiresAt).toLocaleDateString()
+                                : "never"}
+                        </span>
+                        <span>source: {e.source}</span>
+                    </div>
                 </div>
             </div>
             <button
