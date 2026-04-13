@@ -1,32 +1,26 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        # `npm install` (not `npm ci`) — see dash-registry PR #61. Vitest's
-        # wasm32 optional deps don't lock cleanly on macOS hosts, so we
-        # trade strict-lock reproducibility for cross-platform builds.
-        - npm install --no-audit --no-fund
-        # Deploy the CDK stack defined in amplify/backend.ts (DynamoDB
-        # tables, auth, storage). AWS_BRANCH and AWS_APP_ID are injected
-        # by Amplify Hosting.
-        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm install --no-audit --no-fund
-    build:
-      commands:
-        - npm run build
-    postBuild:
-      commands:
-        - node scripts/migrate-to-dynamo.js || echo "Migration skipped (no AWS credentials or tables)"
-  artifacts:
-    baseDirectory: .next
-    files:
-      - "**/*"
-  cache:
-    paths:
-      - .next/cache/**/*
-      - node_modules/**/*
+applications:
+  - frontend:
+      phases:
+        preBuild:
+          commands:
+            # `npm install` (not `npm ci`) — vitest's transitive
+            # @rolldown/binding-wasm32-wasi pulls in wasm-CPU optional deps
+            # that npm on macOS won't lock, so strict `npm ci` fails on
+            # Linux. See dash-registry PR #61.
+            - npm install --no-audit --no-fund
+        build:
+          commands:
+            - npm run build
+        postBuild:
+          commands:
+            - node scripts/migrate-to-dynamo.js || echo "Migration skipped (no AWS credentials or tables)"
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - .next/cache/**/*
+          - node_modules/**/*
+    appRoot: .
