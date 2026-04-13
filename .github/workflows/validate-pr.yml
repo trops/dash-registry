@@ -20,7 +20,9 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-      - run: npm ci
+      # See ci.yml — using npm install for cross-platform optional-dep
+      # tolerance. vitest's wasm32 deps don't lock cleanly on macOS hosts.
+      - run: npm install --no-audit --no-fund
 
       - name: Validate manifests
         run: npm run validate

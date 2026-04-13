@@ -1,0 +1,40 @@
+name: CI
+
+# Runs on every PR and on every push to main so we catch lockfile/test/build
+# failures before they hit Amplify. Mirrors exactly what Amplify will run,
+# using the same `npm ci` strict mode on Linux.
+
+on:
+    pull_request:
+        branches: [main]
+    push:
+        branches: [main]
+
+jobs:
+    build:
+        name: Lint + Test + Build
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
+                  cache: "npm"
+
+            # We use `npm install` (not `npm ci`) because vitest pulls in
+            # @rolldown/binding-wasm32-wasi → @emnapi/core,@emnapi/runtime as
+            # wasm-CPU optional deps that npm on macOS will not write to the
+            # lockfile. `npm ci`'s strict-lock requirement then fails on Linux.
+            # The --no-audit/--no-fund flags keep output tidy and faster.
+            - name: Install dependencies
+              run: npm install --no-audit --no-fund
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test
+              run: npm test
+
+            - name: Build
+              run: npm run build
