@@ -21,6 +21,7 @@ import { authenticateRequest } from "@/lib/auth";
 import {
   listEntitlementsForGrantee,
   listOrgsForUser,
+  listOrgsForDomain,
   getUserByCognitoId,
   getPackage,
   getOrg,
@@ -61,15 +62,28 @@ export async function GET(request: NextRequest) {
     // Direct user entitlements
     const userEntitlements = await listEntitlementsForGrantee("user", userId);
 
-    // Org entitlements — fan-out across every org the user is a member of.
-    // We also hydrate each org once so the UI can show "via Acme Corp".
-    const memberships = await listOrgsForUser(userId);
+    // Org entitlements come from two sources: explicit membership and
+    // implicit membership via verified domains. Combine both into one
+    // deduped orgId set before fanning out to entitlement queries.
+    const user = await getUserByCognitoId(userId);
+    const email = (user?.email as string | undefined) || token.email || null;
+    const domain = email ? email.split("@")[1]?.toLowerCase() : null;
+
+    const [memberships, domainClaims] = await Promise.all([
+      listOrgsForUser(userId),
+      domain ? listOrgsForDomain(domain) : Promise.resolve([]),
+    ]);
+
+    const orgIdSet = new Set<string>();
+    for (const m of memberships) orgIdSet.add(m.orgId);
+    for (const c of domainClaims) if (c.verifiedAt) orgIdSet.add(c.orgId);
+
     const orgMap: Record<string, Org> = {};
     const orgEntitlementLists = await Promise.all(
-      memberships.map(async (m) => {
-        const org = await getOrg(m.orgId);
-        if (org) orgMap[m.orgId] = org;
-        return listEntitlementsForGrantee("org", m.orgId);
+      Array.from(orgIdSet).map(async (orgId) => {
+        const org = await getOrg(orgId);
+        if (org) orgMap[orgId] = org;
+        return listEntitlementsForGrantee("org", orgId);
       }),
     );
     const orgEntitlements = orgEntitlementLists.flat();
@@ -78,8 +92,6 @@ export async function GET(request: NextRequest) {
     // the caller's verified email. These are technically live too
     // (checkEntitlement honors them), but we tag them "pending" so
     // the UI can show a helpful "ready to claim" state.
-    const user = await getUserByCognitoId(userId);
-    const email = (user?.email as string | undefined) || token.email || null;
     const emailEntitlements = email
       ? await listEntitlementsForGrantee(
           "email",

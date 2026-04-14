@@ -135,6 +135,23 @@ entitlementsTable.addGlobalSecondaryIndex({
     sortKey: { name: "createdAt", type: dynamodb.AttributeType.STRING },
 });
 
+// OrgDomains table — PK: orgId, SK: domain
+// Stores domain claims + verification state. A verified domain grants
+// every user whose email matches to the org's entitlements.
+// GSI "ByDomain": reverse lookup for "which org owns this domain?"
+const orgDomainsTable = new dynamodb.Table(dataStack, "OrgDomainsTable", {
+    tableName: "dash-registry-OrgDomains",
+    partitionKey: { name: "orgId", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "domain", type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    removalPolicy: RemovalPolicy.DESTROY,
+});
+
+orgDomainsTable.addGlobalSecondaryIndex({
+    indexName: "ByDomain",
+    partitionKey: { name: "domain", type: dynamodb.AttributeType.STRING },
+});
+
 // InstallLog table — PK: userId, SK: requestedAt#entitlementId
 // TTL: stored in `expiresAt` epoch seconds (90-day retention)
 const installLogTable = new dynamodb.Table(dataStack, "InstallLogTable", {
@@ -157,6 +174,7 @@ backend.addOutput({
         deviceCodesTable: deviceCodesTable.tableName,
         orgsTable: orgsTable.tableName,
         orgMembershipsTable: orgMembershipsTable.tableName,
+        orgDomainsTable: orgDomainsTable.tableName,
         entitlementsTable: entitlementsTable.tableName,
         installLogTable: installLogTable.tableName,
     },

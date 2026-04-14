@@ -51,6 +51,10 @@ export const TABLES = {
     process.env.ORG_MEMBERSHIPS_TABLE ||
     custom?.orgMembershipsTable ||
     "dash-registry-OrgMemberships",
+  ORG_DOMAINS:
+    process.env.ORG_DOMAINS_TABLE ||
+    custom?.orgDomainsTable ||
+    "dash-registry-OrgDomains",
   ENTITLEMENTS:
     process.env.ENTITLEMENTS_TABLE ||
     custom?.entitlementsTable ||
@@ -464,6 +468,92 @@ export async function listOrgsForUser(userId: string) {
     }),
   );
   return (result.Items as OrgMembership[] | undefined) || [];
+}
+
+// --- OrgDomain operations ---
+
+export interface OrgDomain {
+  orgId: string;
+  domain: string;
+  // Token the user must add as a DNS TXT record at _dash-verify.<domain>
+  verificationToken: string;
+  // ISO timestamp when DNS verification succeeded; null while pending.
+  verifiedAt: string | null;
+  createdByUserId: string;
+  createdAt: string;
+}
+
+export async function putOrgDomain(d: OrgDomain) {
+  await docClient.send(
+    new PutCommand({ TableName: TABLES.ORG_DOMAINS, Item: d }),
+  );
+}
+
+export async function getOrgDomain(orgId: string, domain: string) {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLES.ORG_DOMAINS,
+      Key: { orgId, domain },
+    }),
+  );
+  return (result.Item as OrgDomain | undefined) || null;
+}
+
+export async function listOrgDomains(orgId: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ORG_DOMAINS,
+      KeyConditionExpression: "orgId = :o",
+      ExpressionAttributeValues: { ":o": orgId },
+    }),
+  );
+  return (result.Items as OrgDomain[] | undefined) || [];
+}
+
+export async function deleteOrgDomain(orgId: string, domain: string) {
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLES.ORG_DOMAINS,
+      Key: { orgId, domain },
+    }),
+  );
+}
+
+/**
+ * Mark a domain verified (idempotent). Sets verifiedAt = now if not
+ * already verified.
+ */
+export async function markOrgDomainVerified(orgId: string, domain: string) {
+  const now = new Date().toISOString();
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLES.ORG_DOMAINS,
+      Key: { orgId, domain },
+      UpdateExpression: "SET verifiedAt = :now",
+      ConditionExpression: "attribute_exists(orgId)",
+      ExpressionAttributeValues: { ":now": now },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+  return result.Attributes as OrgDomain | undefined;
+}
+
+/**
+ * Returns all orgs that have claimed this domain. Ordinarily this is
+ * zero or one — the verification step ensures a single owner in
+ * practice — but we return the list in case of a race.
+ */
+export async function listOrgsForDomain(domain: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.ORG_DOMAINS,
+      IndexName: "ByDomain",
+      KeyConditionExpression: "#d = :d",
+      ExpressionAttributeNames: { "#d": "domain" },
+      ExpressionAttributeValues: { ":d": domain.trim().toLowerCase() },
+    }),
+  );
+  return (result.Items as OrgDomain[] | undefined) || [];
 }
 
 // --- Entitlement operations ---

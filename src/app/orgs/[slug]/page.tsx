@@ -37,6 +37,14 @@ interface Member {
     user: MemberUser | null;
 }
 
+interface OrgDomain {
+    orgId: string;
+    domain: string;
+    verificationToken: string;
+    verifiedAt: string | null;
+    createdAt: string;
+}
+
 export default function OrgDetailPage() {
     const { slug } = useParams<{ slug: string }>();
     const { profile, getAccessToken, isAuthenticated, isLoading } = useAuth();
@@ -51,6 +59,16 @@ export default function OrgDetailPage() {
     const [inviting, setInviting] = useState(false);
     const [inviteError, setInviteError] = useState<string | null>(null);
     const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+    const [domains, setDomains] = useState<OrgDomain[]>([]);
+    const [newDomain, setNewDomain] = useState("");
+    const [addingDomain, setAddingDomain] = useState(false);
+    const [domainError, setDomainError] = useState<string | null>(null);
+    const [verifyingDomain, setVerifyingDomain] = useState<string | null>(null);
+    const [verifyError, setVerifyError] = useState<{
+        domain: string;
+        message: string;
+    } | null>(null);
 
     const myRole =
         profile?.cognitoId
@@ -79,13 +97,17 @@ export default function OrgDetailPage() {
             const orgData = await orgRes.json();
             setOrg(orgData.org);
 
-            const memRes = await fetch(
-                `/api/orgs/${orgData.org.orgId}/members`,
-                { headers },
-            );
+            const [memRes, domRes] = await Promise.all([
+                fetch(`/api/orgs/${orgData.org.orgId}/members`, { headers }),
+                fetch(`/api/orgs/${orgData.org.orgId}/domains`, { headers }),
+            ]);
             if (!memRes.ok) throw new Error(`Members fetch ${memRes.status}`);
             const memData = await memRes.json();
             setMembers(memData.members || []);
+            if (domRes.ok) {
+                const domData = await domRes.json();
+                setDomains(domData.domains || []);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Load failed");
         } finally {
@@ -154,6 +176,87 @@ export default function OrgDetailPage() {
             const body = await res.json().catch(() => ({}));
             alert(body.error || `Remove failed (${res.status})`);
         }
+    }
+
+    async function handleAddDomain(e: React.FormEvent) {
+        e.preventDefault();
+        setDomainError(null);
+        const domain = newDomain.trim().toLowerCase();
+        if (!domain || !domain.includes(".")) {
+            setDomainError("Enter a bare domain, e.g. algolia.com");
+            return;
+        }
+        if (!org) return;
+        setAddingDomain(true);
+        const token = await getAccessToken();
+        try {
+            const res = await fetch(`/api/orgs/${org.orgId}/domains`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ domain }),
+            });
+            const body = await res.json();
+            if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+            setNewDomain("");
+            await load();
+        } catch (err) {
+            setDomainError(err instanceof Error ? err.message : "Failed to add domain");
+        } finally {
+            setAddingDomain(false);
+        }
+    }
+
+    async function handleVerifyDomain(domain: string) {
+        if (!org) return;
+        setVerifyingDomain(domain);
+        setVerifyError(null);
+        const token = await getAccessToken();
+        try {
+            const res = await fetch(
+                `/api/orgs/${org.orgId}/domains/${encodeURIComponent(domain)}/verify`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` },
+                },
+            );
+            const body = await res.json();
+            if (!res.ok) {
+                setVerifyError({
+                    domain,
+                    message:
+                        body.hint ||
+                        body.error ||
+                        `Verification failed (${res.status})`,
+                });
+                return;
+            }
+            await load();
+        } catch (err) {
+            setVerifyError({
+                domain,
+                message: err instanceof Error ? err.message : "Verify failed",
+            });
+        } finally {
+            setVerifyingDomain(null);
+        }
+    }
+
+    async function handleDeleteDomain(domain: string) {
+        if (!confirm(`Remove ${domain} from this org? Members whose email matches this domain will lose implicit access.`)) return;
+        if (!org) return;
+        const token = await getAccessToken();
+        const res = await fetch(
+            `/api/orgs/${org.orgId}/domains/${encodeURIComponent(domain)}`,
+            {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+            },
+        );
+        if (res.ok) await load();
+        else alert(`Remove failed (${res.status})`);
     }
 
     if (isLoading || loading) {
@@ -275,6 +378,72 @@ export default function OrgDetailPage() {
                 </section>
             )}
 
+            <section className="mb-8">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                    Verified domains
+                </h2>
+                <p className="text-xs text-gray-500 mb-4">
+                    Users whose verified email matches a domain below are
+                    treated as implicit org members — any package granted
+                    to this org covers them automatically, even without
+                    explicit membership.
+                </p>
+
+                {canInvite && (
+                    <form
+                        onSubmit={handleAddDomain}
+                        className="flex items-start gap-2 mb-4"
+                    >
+                        <div className="flex-1">
+                            <input
+                                type="text"
+                                value={newDomain}
+                                onChange={(e) => setNewDomain(e.target.value)}
+                                placeholder="algolia.com"
+                                disabled={addingDomain}
+                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                            />
+                            {domainError && (
+                                <div className="text-xs text-red-400 mt-1">
+                                    {domainError}
+                                </div>
+                            )}
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={addingDomain || !newDomain.trim()}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 rounded text-white text-sm font-medium"
+                        >
+                            {addingDomain ? "Adding..." : "Claim"}
+                        </button>
+                    </form>
+                )}
+
+                {domains.length === 0 ? (
+                    <div className="text-xs text-gray-500 bg-gray-900/40 border border-gray-800 rounded-lg p-4 text-center">
+                        No domains claimed yet.
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {domains.map((d) => (
+                            <DomainRow
+                                key={d.domain}
+                                record={d}
+                                canManage={canInvite}
+                                verifying={verifyingDomain === d.domain}
+                                verifyError={
+                                    verifyError?.domain === d.domain
+                                        ? verifyError.message
+                                        : null
+                                }
+                                onVerify={handleVerifyDomain}
+                                onDelete={handleDeleteDomain}
+                            />
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <section>
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-4">
                     Members ({members.length})
@@ -353,6 +522,95 @@ function MemberRow({
                 >
                     Remove
                 </button>
+            )}
+        </div>
+    );
+}
+
+function DomainRow({
+    record: d,
+    canManage,
+    verifying,
+    verifyError,
+    onVerify,
+    onDelete,
+}: {
+    record: OrgDomain;
+    canManage: boolean;
+    verifying: boolean;
+    verifyError: string | null;
+    onVerify: (domain: string) => void;
+    onDelete: (domain: string) => void;
+}) {
+    const isVerified = !!d.verifiedAt;
+    return (
+        <div className="bg-gray-900/40 border border-gray-800 rounded-lg p-3">
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="text-sm text-gray-100 truncate">
+                        {d.domain}
+                    </span>
+                    <span
+                        className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                            isVerified
+                                ? "bg-emerald-900/30 text-emerald-300"
+                                : "bg-amber-900/30 text-amber-300"
+                        }`}
+                    >
+                        {isVerified ? "verified" : "pending"}
+                    </span>
+                </div>
+                {canManage && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        {!isVerified && (
+                            <button
+                                onClick={() => onVerify(d.domain)}
+                                disabled={verifying}
+                                className="px-2.5 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 rounded text-white"
+                            >
+                                {verifying ? "Checking DNS..." : "Verify"}
+                            </button>
+                        )}
+                        <button
+                            onClick={() => onDelete(d.domain)}
+                            className="px-2.5 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded"
+                        >
+                            Remove
+                        </button>
+                    </div>
+                )}
+            </div>
+            {!isVerified && canManage && (
+                <div className="mt-3 text-xs text-gray-400 bg-gray-950/60 border border-gray-800 rounded p-3">
+                    <div className="mb-1 text-gray-300">
+                        Add this TXT record at your DNS provider:
+                    </div>
+                    <div className="font-mono text-[11px] text-gray-200 break-all">
+                        <div>
+                            <span className="text-gray-500">Host:</span>{" "}
+                            _dash-verify.{d.domain}
+                        </div>
+                        <div>
+                            <span className="text-gray-500">Type:</span> TXT
+                        </div>
+                        <div>
+                            <span className="text-gray-500">Value:</span>{" "}
+                            {d.verificationToken}
+                        </div>
+                    </div>
+                    <div className="mt-2 text-[11px] text-gray-500">
+                        After adding the record, click Verify. DNS changes
+                        can take a few minutes to propagate.
+                    </div>
+                </div>
+            )}
+            {verifyError && (
+                <div className="mt-2 text-xs text-red-400">{verifyError}</div>
+            )}
+            {isVerified && (
+                <div className="mt-1 text-[11px] text-gray-500">
+                    Verified {new Date(d.verifiedAt!).toLocaleDateString()}
+                </div>
             )}
         </div>
     );

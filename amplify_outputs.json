@@ -82,6 +82,7 @@
     "deviceCodesTable": "dash-registry-DeviceCodes",
     "orgsTable": "dash-registry-Orgs",
     "orgMembershipsTable": "dash-registry-OrgMemberships",
+    "orgDomainsTable": "dash-registry-OrgDomains",
     "entitlementsTable": "dash-registry-Entitlements",
     "installLogTable": "dash-registry-InstallLog"
   }
