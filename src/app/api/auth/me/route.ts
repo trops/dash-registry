@@ -12,6 +12,7 @@ import {
   listEntitlementsForGrantee,
   claimEmailEntitlement,
 } from "@/lib/db";
+import { getCognitoUserAttributes } from "@/lib/cognito";
 
 /**
  * Best-effort conversion of email-pending entitlements into user grants
@@ -48,17 +49,39 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Backfill email on the user record when registration missed it.
-  // Early registrations used `token.email || ""` and some access tokens
-  // don't include email, so the stored value was empty. If we can now
-  // see a token-provided email, persist it — this also enables the
-  // email-pending entitlement claim flow below to succeed.
+  // Backfill fields that registration may have missed. Federated OAuth
+  // (Google) tokens often omit email and picture from access tokens, so
+  // the original register call stored empty strings. Here we pull the
+  // canonical values from Cognito user attributes and persist them to
+  // our Users table, self-healing on any /me call.
   const storedEmail = (user.email as string | undefined) || "";
-  if (!storedEmail && token.email) {
-    const updated = await updateUser(token.sub, {
-      email: token.email.trim().toLowerCase(),
-    });
-    if (updated) user = updated;
+  const storedAvatar = (user.avatarUrl as string | undefined) || "";
+  const needsEmail = !storedEmail;
+  const needsAvatar = !storedAvatar;
+
+  if (needsEmail || needsAvatar) {
+    const backfill: Parameters<typeof updateUser>[1] = {};
+    if (needsEmail && token.email) {
+      backfill.email = token.email.trim().toLowerCase();
+    }
+    // For fields not on the access token (picture), hit Cognito
+    // AdminGetUser. Skip the call entirely if we don't need anything
+    // from it — it's an extra network hop.
+    if (needsAvatar || (needsEmail && !token.email)) {
+      const attrs = await getCognitoUserAttributes(token.sub);
+      if (attrs) {
+        if (needsEmail && attrs.email && !backfill.email) {
+          backfill.email = attrs.email.trim().toLowerCase();
+        }
+        if (needsAvatar && attrs.picture) {
+          backfill.avatarUrl = attrs.picture;
+        }
+      }
+    }
+    if (Object.keys(backfill).length > 0) {
+      const updated = await updateUser(token.sub, backfill);
+      if (updated) user = updated;
+    }
   }
 
   const email = (user.email as string | undefined) || token.email || null;

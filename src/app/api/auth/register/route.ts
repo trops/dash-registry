@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
 import { createUser, getUserByCognitoId, getUserByUsername } from "@/lib/db";
+import { getCognitoUserAttributes } from "@/lib/cognito";
 
 const USERNAME_PATTERN = /^[a-z][a-z0-9-]*[a-z0-9]$/;
 
@@ -66,18 +67,27 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create user profile. Email is normalized (lowercased + trimmed)
-        // so that email-based entitlement lookups match regardless of
-        // how the registration value was cased. Access tokens sometimes
-        // omit email — /api/auth/me will backfill from the token on a
-        // later request if that happens.
-        const normalizedEmail = (token.email || "").trim().toLowerCase();
+        // Create user profile. Federated OAuth (Google) access tokens
+        // don't include email or picture, so we pull them directly from
+        // the Cognito user pool at registration time. Email/name/picture
+        // all come from the identity provider and are normalized before
+        // storing.
+        const cognitoAttrs = await getCognitoUserAttributes(token.sub);
+        const normalizedEmail = (
+            token.email ||
+            cognitoAttrs?.email ||
+            ""
+        )
+            .trim()
+            .toLowerCase();
         const user = await createUser({
             cognitoId: token.sub,
             username,
             email: normalizedEmail,
-            displayName: displayName || username,
+            displayName:
+                displayName || cognitoAttrs?.name || username,
             githubUsername: githubUsername || undefined,
+            avatarUrl: cognitoAttrs?.picture,
         });
 
         return NextResponse.json({ success: true, user });
