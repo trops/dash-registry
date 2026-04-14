@@ -1,12 +1,18 @@
 /**
- * GET /api/orgs/by-slug/[slug]
+ * GET /api/orgs/by-slug/[slug]        — full org record (members only)
+ * GET /api/orgs/by-slug/[slug]?minimal — minimal org record (any authed user)
  *
- * Resolve a URL-friendly slug to the full org record. Used by the
- * /orgs/[slug] page to turn the route param into the orgId needed for
- * membership endpoints.
+ * The full path is used by the /orgs/[slug] page and requires the caller
+ * to be a member — this keeps member lists, roles, and full org details
+ * private.
  *
- * Auth required. Returns the org record only if the caller is a member
- * — non-members see 404 so org slugs aren't enumerable.
+ * The `?minimal` path is used by the package access-management flow to
+ * resolve a slug typed by a package owner into an orgId for granting.
+ * Any authenticated user can use it, but the response only includes
+ * orgId, slug, and name — no member list, no ownership, no internal
+ * fields. 404 on unknown slug is an intentional minor enumeration
+ * vector; discovering that an org exists tells the caller nothing
+ * about who's in it.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
@@ -25,6 +31,9 @@ export async function GET(
         );
     }
 
+    const { searchParams } = new URL(request.url);
+    const minimal = searchParams.has("minimal");
+
     try {
         const org = await getOrgBySlug(params.slug.toLowerCase());
         if (!org) {
@@ -33,6 +42,18 @@ export async function GET(
                 { status: 404 },
             );
         }
+
+        if (minimal) {
+            return NextResponse.json({
+                org: {
+                    orgId: org.orgId,
+                    slug: org.slug,
+                    name: org.name,
+                },
+            });
+        }
+
+        // Full record requires membership.
         if (!(await isMember(org.orgId, token.sub))) {
             return NextResponse.json(
                 { error: "Org not found" },

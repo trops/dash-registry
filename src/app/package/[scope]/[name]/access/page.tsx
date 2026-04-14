@@ -48,10 +48,6 @@ interface Entitlement {
     claimedByUser?: GranteeDisplay | null;
 }
 
-interface MyOrg {
-    org: { orgId: string; slug: string; name: string };
-    membership: { role: "owner" | "admin" | "member" };
-}
 
 interface PackageDetail {
     scope: string;
@@ -79,8 +75,7 @@ export default function AccessPage() {
 
     const [grantMode, setGrantMode] = useState<"email" | "org">("email");
     const [grantEmail, setGrantEmail] = useState("");
-    const [grantOrgId, setGrantOrgId] = useState<string>("");
-    const [myOrgs, setMyOrgs] = useState<MyOrg[]>([]);
+    const [grantOrgSlug, setGrantOrgSlug] = useState("");
     const [grantSeats, setGrantSeats] = useState<string>("");
     const [grantExpires, setGrantExpires] = useState<string>("");
     const [granting, setGranting] = useState(false);
@@ -141,25 +136,6 @@ export default function AccessPage() {
         }
     }, [isLoading, isAuthenticated, load]);
 
-    // Load the user's orgs so the "Grant to org" picker can populate.
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        (async () => {
-            const token = await getAccessToken();
-            if (!token) return;
-            try {
-                const res = await fetch("/api/orgs", {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setMyOrgs(data.orgs || []);
-                }
-            } catch {
-                /* non-fatal — org picker just stays empty */
-            }
-        })();
-    }, [isAuthenticated, getAccessToken]);
 
     async function handleGrant(e: React.FormEvent) {
         e.preventDefault();
@@ -172,19 +148,37 @@ export default function AccessPage() {
             let successMessage = "";
 
             if (grantMode === "org") {
-                // Grant to an org picked from the caller's org list.
-                if (!grantOrgId) {
-                    setGrantError("Select an organization");
+                // Grant to an org by slug. Any authenticated owner can
+                // grant to any existing org — the slug is the
+                // identifier the recipient shares with the grantor
+                // (like an email). Unknown slugs 404 with a helpful
+                // hint pointing at the email-grant flow.
+                const slug = grantOrgSlug.trim().toLowerCase();
+                if (!slug) {
+                    setGrantError("Organization slug required");
                     setGranting(false);
                     return;
                 }
-                const picked = myOrgs.find((o) => o.org.orgId === grantOrgId);
+                const lookup = await fetch(
+                    `/api/orgs/by-slug/${encodeURIComponent(slug)}?minimal`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                if (lookup.status === 404) {
+                    setGrantError(
+                        `Organization "${slug}" not found. If they haven't set up an org yet, grant to an individual email instead — they can join an org later.`,
+                    );
+                    setGranting(false);
+                    return;
+                }
+                if (!lookup.ok)
+                    throw new Error(`Lookup failed ${lookup.status}`);
+                const data = await lookup.json();
                 body = {
                     granteeType: "org",
-                    granteeId: grantOrgId,
+                    granteeId: data.org.orgId,
                     source: "manual",
                 };
-                successMessage = `Granted access to ${picked?.org.name || "org"}`;
+                successMessage = `Granted access to ${data.org.name} (@${data.org.slug})`;
             } else {
                 // Email path — resolve to an existing user if possible,
                 // otherwise create an email-pending grant.
@@ -240,7 +234,7 @@ export default function AccessPage() {
 
             setGrantSuccess(successMessage);
             setGrantEmail("");
-            setGrantOrgId("");
+            setGrantOrgSlug("");
             setGrantSeats("");
             setGrantExpires("");
             await load();
@@ -409,37 +403,25 @@ export default function AccessPage() {
                     ) : (
                         <div>
                             <label className="block text-sm text-gray-300 mb-1">
-                                Organization
+                                Organization slug
                             </label>
-                            {myOrgs.length === 0 ? (
-                                <div className="text-xs text-gray-500 bg-gray-800/40 border border-gray-700/50 rounded p-3">
-                                    You&apos;re not in any organizations yet.{" "}
-                                    <Link
-                                        href="/orgs"
-                                        className="text-indigo-400 hover:underline"
-                                    >
-                                        Create one
-                                    </Link>{" "}
-                                    to grant access to a whole team at once.
-                                </div>
-                            ) : (
-                                <select
-                                    value={grantOrgId}
-                                    onChange={(e) => setGrantOrgId(e.target.value)}
-                                    disabled={granting}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
-                                >
-                                    <option value="">Select an organization...</option>
-                                    {myOrgs.map((o) => (
-                                        <option key={o.org.orgId} value={o.org.orgId}>
-                                            {o.org.name} (@{o.org.slug})
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
+                            <input
+                                type="text"
+                                value={grantOrgSlug}
+                                onChange={(e) =>
+                                    setGrantOrgSlug(e.target.value)
+                                }
+                                placeholder="acme-engineering"
+                                disabled={granting}
+                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                            />
                             <p className="text-xs text-gray-500 mt-1">
-                                All current and future members of the
-                                organization get access.
+                                The URL-safe slug the organization uses
+                                (e.g. `acme-engineering`). All current and
+                                future members get access. If the org
+                                doesn&apos;t exist yet, grant to an
+                                individual email instead and they can join
+                                an org later.
                             </p>
                         </div>
                     )}
@@ -486,7 +468,7 @@ export default function AccessPage() {
                         disabled={
                             granting ||
                             (grantMode === "email" && !grantEmail.trim()) ||
-                            (grantMode === "org" && !grantOrgId)
+                            (grantMode === "org" && !grantOrgSlug.trim())
                         }
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 rounded text-white text-sm font-medium transition-colors"
                     >
