@@ -22,6 +22,11 @@ interface GranteeDisplay {
     avatarUrl?: string;
 }
 
+interface OrgDisplay {
+    slug: string;
+    name: string;
+}
+
 interface Entitlement {
     entitlementId: string;
     packageScope: string;
@@ -39,7 +44,13 @@ interface Entitlement {
     revokedAt: string | null;
     // Enriched by the GET endpoint for display only.
     grantee?: GranteeDisplay | null;
+    org?: OrgDisplay | null;
     claimedByUser?: GranteeDisplay | null;
+}
+
+interface MyOrg {
+    org: { orgId: string; slug: string; name: string };
+    membership: { role: "owner" | "admin" | "member" };
 }
 
 interface PackageDetail {
@@ -66,7 +77,10 @@ export default function AccessPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [grantMode, setGrantMode] = useState<"email" | "org">("email");
     const [grantEmail, setGrantEmail] = useState("");
+    const [grantOrgId, setGrantOrgId] = useState<string>("");
+    const [myOrgs, setMyOrgs] = useState<MyOrg[]>([]);
     const [grantSeats, setGrantSeats] = useState<string>("");
     const [grantExpires, setGrantExpires] = useState<string>("");
     const [granting, setGranting] = useState(false);
@@ -127,46 +141,81 @@ export default function AccessPage() {
         }
     }, [isLoading, isAuthenticated, load]);
 
+    // Load the user's orgs so the "Grant to org" picker can populate.
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        (async () => {
+            const token = await getAccessToken();
+            if (!token) return;
+            try {
+                const res = await fetch("/api/orgs", {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setMyOrgs(data.orgs || []);
+                }
+            } catch {
+                /* non-fatal — org picker just stays empty */
+            }
+        })();
+    }, [isAuthenticated, getAccessToken]);
+
     async function handleGrant(e: React.FormEvent) {
         e.preventDefault();
         setGrantError(null);
         setGrantSuccess(null);
-        const email = grantEmail.trim().toLowerCase();
-        if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-            setGrantError("Valid email address required");
-            return;
-        }
         setGranting(true);
         const token = await getAccessToken();
         try {
-            // 1. Try to resolve email → existing user. If match, create a
-            //    user-grant (immediately active). Otherwise fall through
-            //    to an email-pending grant. Either path looks the same
-            //    to the owner.
             let body: Record<string, unknown>;
-            let friendlyName = email;
+            let successMessage = "";
 
-            const lookup = await fetch(
-                `/api/users/lookup?email=${encodeURIComponent(email)}`,
-                { headers: { Authorization: `Bearer ${token}` } },
-            );
-
-            if (lookup.ok) {
-                const user: UserLookupResult = await lookup.json();
+            if (grantMode === "org") {
+                // Grant to an org picked from the caller's org list.
+                if (!grantOrgId) {
+                    setGrantError("Select an organization");
+                    setGranting(false);
+                    return;
+                }
+                const picked = myOrgs.find((o) => o.org.orgId === grantOrgId);
                 body = {
-                    granteeType: "user",
-                    granteeId: user.cognitoId,
+                    granteeType: "org",
+                    granteeId: grantOrgId,
                     source: "manual",
                 };
-                friendlyName = user.displayName || user.username;
-            } else if (lookup.status === 404) {
-                body = {
-                    granteeType: "email",
-                    granteeId: email,
-                    source: "invite",
-                };
+                successMessage = `Granted access to ${picked?.org.name || "org"}`;
             } else {
-                throw new Error(`Lookup failed ${lookup.status}`);
+                // Email path — resolve to an existing user if possible,
+                // otherwise create an email-pending grant.
+                const email = grantEmail.trim().toLowerCase();
+                if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                    setGrantError("Valid email address required");
+                    setGranting(false);
+                    return;
+                }
+                const lookup = await fetch(
+                    `/api/users/lookup?email=${encodeURIComponent(email)}`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                if (lookup.ok) {
+                    const user: UserLookupResult = await lookup.json();
+                    body = {
+                        granteeType: "user",
+                        granteeId: user.cognitoId,
+                        source: "manual",
+                    };
+                    successMessage = `Granted access to ${user.displayName || user.username}`;
+                } else if (lookup.status === 404) {
+                    body = {
+                        granteeType: "email",
+                        granteeId: email,
+                        source: "invite",
+                    };
+                    successMessage = `Invited ${email} — access activates when they sign up and verify this email.`;
+                } else {
+                    throw new Error(`Lookup failed ${lookup.status}`);
+                }
             }
 
             const seatsNum = grantSeats.trim() ? Number(grantSeats) : null;
@@ -189,12 +238,9 @@ export default function AccessPage() {
                 throw new Error(err.error || `Grant failed ${grant.status}`);
             }
 
-            setGrantSuccess(
-                body.granteeType === "email"
-                    ? `Invited ${email} — access activates when they sign up and verify this email.`
-                    : `Granted access to ${friendlyName}`,
-            );
+            setGrantSuccess(successMessage);
             setGrantEmail("");
+            setGrantOrgId("");
             setGrantSeats("");
             setGrantExpires("");
             await load();
@@ -321,25 +367,82 @@ export default function AccessPage() {
                     Grant access
                 </h2>
                 <form onSubmit={handleGrant} className="space-y-4">
-                    <div>
-                        <label className="block text-sm text-gray-300 mb-1">
-                            Email
-                        </label>
-                        <input
-                            type="email"
-                            value={grantEmail}
-                            onChange={(e) => setGrantEmail(e.target.value)}
-                            placeholder="alice@example.com"
-                            disabled={granting}
-                            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                            If they&apos;re already registered, access
-                            activates immediately. If not, the grant waits
-                            and activates when they sign up with this
-                            email.
-                        </p>
+                    {/* Mode toggle: individual email vs org */}
+                    <div className="flex items-center gap-1 bg-gray-800/60 rounded p-1 w-fit">
+                        {(["email", "org"] as const).map((mode) => (
+                            <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setGrantMode(mode)}
+                                disabled={granting}
+                                className={`px-3 py-1 text-xs rounded transition-colors ${
+                                    grantMode === mode
+                                        ? "bg-indigo-600 text-white"
+                                        : "text-gray-400 hover:text-gray-200"
+                                }`}
+                            >
+                                {mode === "email" ? "Individual" : "Organization"}
+                            </button>
+                        ))}
                     </div>
+
+                    {grantMode === "email" ? (
+                        <div>
+                            <label className="block text-sm text-gray-300 mb-1">
+                                Email
+                            </label>
+                            <input
+                                type="email"
+                                value={grantEmail}
+                                onChange={(e) => setGrantEmail(e.target.value)}
+                                placeholder="alice@example.com"
+                                disabled={granting}
+                                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                If they&apos;re already registered, access
+                                activates immediately. If not, the grant
+                                waits and activates when they sign up with
+                                this email.
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm text-gray-300 mb-1">
+                                Organization
+                            </label>
+                            {myOrgs.length === 0 ? (
+                                <div className="text-xs text-gray-500 bg-gray-800/40 border border-gray-700/50 rounded p-3">
+                                    You&apos;re not in any organizations yet.{" "}
+                                    <Link
+                                        href="/orgs"
+                                        className="text-indigo-400 hover:underline"
+                                    >
+                                        Create one
+                                    </Link>{" "}
+                                    to grant access to a whole team at once.
+                                </div>
+                            ) : (
+                                <select
+                                    value={grantOrgId}
+                                    onChange={(e) => setGrantOrgId(e.target.value)}
+                                    disabled={granting}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-gray-200 text-sm focus:outline-none focus:border-indigo-500"
+                                >
+                                    <option value="">Select an organization...</option>
+                                    {myOrgs.map((o) => (
+                                        <option key={o.org.orgId} value={o.org.orgId}>
+                                            {o.org.name} (@{o.org.slug})
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">
+                                All current and future members of the
+                                organization get access.
+                            </p>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm text-gray-300 mb-1">
@@ -380,7 +483,11 @@ export default function AccessPage() {
                     )}
                     <button
                         type="submit"
-                        disabled={granting || !grantEmail.trim()}
+                        disabled={
+                            granting ||
+                            (grantMode === "email" && !grantEmail.trim()) ||
+                            (grantMode === "org" && !grantOrgId)
+                        }
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 rounded text-white text-sm font-medium transition-colors"
                     >
                         {granting ? "Granting..." : "Grant access"}
@@ -422,17 +529,21 @@ function EntitlementRow({
 }) {
     const isPending = e.granteeType === "email";
     const isUser = e.granteeType === "user";
+    const isOrg = e.granteeType === "org";
     const g = e.grantee;
+    const org = e.org;
     // Prefer human-friendly labels: displayName → @username → email (for
-    // pending) → raw id (fallback). The raw cognitoId is only shown when we
-    // somehow couldn't resolve the user (e.g. deleted account).
-    const primaryLabel =
-        isUser && g
-            ? g.displayName || `@${g.username}`
-            : isPending
-            ? e.granteeId
-            : e.granteeId;
-    const secondaryLabel = isUser && g && g.displayName ? `@${g.username}` : null;
+    // pending) → org name → raw id (fallback).
+    const primaryLabel = isUser
+        ? g?.displayName || (g ? `@${g.username}` : e.granteeId)
+        : isOrg
+        ? org?.name || e.granteeId
+        : e.granteeId;
+    const secondaryLabel = isUser && g?.displayName
+        ? `@${g.username}`
+        : isOrg && org
+        ? `@${org.slug}`
+        : null;
 
     return (
         <div className="flex items-center justify-between bg-gray-900/40 border border-gray-800 rounded-lg p-3">
@@ -446,7 +557,11 @@ function EntitlementRow({
                     />
                 ) : (
                     <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
-                        {isPending ? "@" : isUser ? "\u00B7" : "O"}
+                        {isPending
+                            ? "@"
+                            : isOrg
+                            ? (org?.name || "O").slice(0, 1).toUpperCase()
+                            : "\u00B7"}
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -455,6 +570,8 @@ function EntitlementRow({
                             className={`text-xs uppercase tracking-wide px-1.5 py-0.5 rounded ${
                                 isPending
                                     ? "text-amber-400 bg-amber-900/30"
+                                    : isOrg
+                                    ? "text-purple-300 bg-purple-900/30"
                                     : "text-gray-500 bg-gray-800"
                             }`}
                         >

@@ -93,6 +93,13 @@ export default function NavBar() {
                     >
                       Account
                     </Link>
+                    <Link
+                      href="/orgs"
+                      onClick={() => setDropdownOpen(false)}
+                      className="block px-4 py-2 text-sm text-dash-muted hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      Organizations
+                    </Link>
                     <button
                       onClick={() => {
                         setDropdownOpen(false);
