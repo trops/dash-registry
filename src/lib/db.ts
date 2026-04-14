@@ -128,6 +128,7 @@ export async function updateUser(
     displayName?: string;
     githubUsername?: string;
     email?: string;
+    avatarUrl?: string;
   },
 ) {
   const now = new Date().toISOString();
