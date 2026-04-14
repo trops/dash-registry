@@ -13,6 +13,7 @@ import {
   putEntitlement,
   listEntitlementsForPackage,
   getUserByCognitoId,
+  getOrg,
   type Entitlement,
 } from "@/lib/db";
 import { buildEntitlement } from "@/lib/entitlement";
@@ -156,9 +157,23 @@ export async function GET(
   try {
     const entitlements = await listEntitlementsForPackage(scope, name);
     const granteeInfo = await resolveUserGrantees(entitlements);
+
+    // Resolve org grantees to slug+name for display.
+    const orgIds = new Set<string>();
+    for (const e of entitlements)
+      if (e.granteeType === "org") orgIds.add(e.granteeId);
+    const orgInfo: Record<string, { slug: string; name: string }> = {};
+    await Promise.all(
+      Array.from(orgIds).map(async (id) => {
+        const org = await getOrg(id);
+        if (org) orgInfo[id] = { slug: org.slug, name: org.name };
+      }),
+    );
+
     const enriched = entitlements.map((e) => ({
       ...e,
       grantee: e.granteeType === "user" ? granteeInfo[e.granteeId] || null : null,
+      org: e.granteeType === "org" ? orgInfo[e.granteeId] || null : null,
       claimedByUser: e.claimedByUserId
         ? granteeInfo[e.claimedByUserId] || null
         : null,
