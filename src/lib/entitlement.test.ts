@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("./db", () => ({
     listEntitlementsForPackage: vi.fn(),
     listOrgsForUser: vi.fn(),
+    listOrgsForDomain: vi.fn(),
     claimEntitlementSeat: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ import {
 import {
     listEntitlementsForPackage,
     listOrgsForUser,
+    listOrgsForDomain,
     claimEntitlementSeat,
     type Entitlement,
 } from "./db";
@@ -36,6 +38,7 @@ const mockList = listEntitlementsForPackage as unknown as ReturnType<
     typeof vi.fn
 >;
 const mockOrgs = listOrgsForUser as unknown as ReturnType<typeof vi.fn>;
+const mockDomainOrgs = listOrgsForDomain as unknown as ReturnType<typeof vi.fn>;
 const mockClaim = claimEntitlementSeat as unknown as ReturnType<typeof vi.fn>;
 const mockFlag = isPrivatePackagesEnabled as unknown as ReturnType<
     typeof vi.fn
@@ -80,6 +83,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     mockFlag.mockReturnValue(true);
     mockOrgs.mockResolvedValue([]);
+    mockDomainOrgs.mockResolvedValue([]);
     mockList.mockResolvedValue([]);
     mockClaim.mockResolvedValue(true);
 });
@@ -268,6 +272,89 @@ describe("checkEntitlement", () => {
         ]);
         const result = await checkEntitlement({
             userId: "user-123",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(false);
+    });
+
+    it("allows a user whose verified-email domain matches a verified org domain", async () => {
+        // Domain org owns a grant, user is NOT an explicit member, but
+        // their email is @algolia.com which is verified for that org.
+        mockDomainOrgs.mockResolvedValue([
+            {
+                orgId: "org-domain",
+                domain: "algolia.com",
+                verificationToken: "t",
+                verifiedAt: "2026-01-01T00:00:00Z",
+                createdByUserId: "x",
+                createdAt: "2026-01-01T00:00:00Z",
+            },
+        ]);
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "org",
+                granteeId: "org-domain",
+                granteeKey: "org#org-domain",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-xyz",
+            verifiedEmail: "anyone@algolia.com",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(true);
+        if (result.allowed) expect(result.reason).toBe("entitled");
+    });
+
+    it("ignores UNVERIFIED domain claims (verifiedAt null)", async () => {
+        mockDomainOrgs.mockResolvedValue([
+            {
+                orgId: "org-pending",
+                domain: "algolia.com",
+                verificationToken: "t",
+                verifiedAt: null, // not verified yet
+                createdByUserId: "x",
+                createdAt: "2026-01-01T00:00:00Z",
+            },
+        ]);
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "org",
+                granteeId: "org-pending",
+                granteeKey: "org#org-pending",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-xyz",
+            verifiedEmail: "anyone@algolia.com",
+            pkg: pkg(),
+            version: "1.0.0",
+        });
+        expect(result.allowed).toBe(false);
+    });
+
+    it("ignores domain-verified access when no verified email is supplied", async () => {
+        mockDomainOrgs.mockResolvedValue([
+            {
+                orgId: "org-domain",
+                domain: "algolia.com",
+                verificationToken: "t",
+                verifiedAt: "2026-01-01T00:00:00Z",
+                createdByUserId: "x",
+                createdAt: "2026-01-01T00:00:00Z",
+            },
+        ]);
+        mockList.mockResolvedValue([
+            entitlement({
+                granteeType: "org",
+                granteeId: "org-domain",
+                granteeKey: "org#org-domain",
+            }),
+        ]);
+        const result = await checkEntitlement({
+            userId: "user-xyz",
             pkg: pkg(),
             version: "1.0.0",
         });

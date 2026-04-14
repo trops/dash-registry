@@ -18,10 +18,36 @@
 import {
   listEntitlementsForPackage,
   listOrgsForUser,
+  listOrgsForDomain,
   claimEntitlementSeat,
   type Entitlement,
 } from "./db";
 import { isPrivatePackagesEnabled } from "./featureFlags";
+
+/**
+ * Extract the domain portion of an email (lowercased + trimmed).
+ * Returns null for obviously malformed values.
+ */
+function emailDomain(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const at = email.indexOf("@");
+  if (at < 0 || at === email.length - 1) return null;
+  return email.slice(at + 1).trim().toLowerCase();
+}
+
+/**
+ * Orgs whose verified domain matches the given email domain. Users
+ * with verified emails in these domains get implicit org#orgId grantee
+ * keys — even if they aren't explicit org members.
+ */
+async function implicitOrgsForEmailDomain(
+  verifiedEmail: string | null | undefined,
+): Promise<string[]> {
+  const domain = emailDomain(verifiedEmail);
+  if (!domain) return [];
+  const claims = await listOrgsForDomain(domain);
+  return claims.filter((c) => c.verifiedAt).map((c) => c.orgId);
+}
 
 export type EntitlementResult =
   | {
@@ -94,12 +120,19 @@ export async function checkEntitlement(
     return { allowed: true, reason: "owner", entitlementId: null };
   }
 
-  // Build the set of grantee keys the user matches: their own user-key,
-  // one org-key per org they belong to, and (only if the email is verified
-  // by Cognito) their email-key so they can claim pre-invites.
-  const memberships = await listOrgsForUser(userId);
+  // Build the set of grantee keys the user matches:
+  //   - their own user-key
+  //   - one org-key per org they're an explicit member of
+  //   - one org-key per org whose verified domain matches their email
+  //     (implicit membership via domain verification)
+  //   - their email-key so they can claim pre-invites (verified email only)
+  const [memberships, domainOrgs] = await Promise.all([
+    listOrgsForUser(userId),
+    implicitOrgsForEmailDomain(verifiedEmail),
+  ]);
   const granteeKeys = new Set<string>([`user#${userId}`]);
   for (const m of memberships) granteeKeys.add(`org#${m.orgId}`);
+  for (const orgId of domainOrgs) granteeKeys.add(`org#${orgId}`);
   if (verifiedEmail) {
     granteeKeys.add(`email#${verifiedEmail.trim().toLowerCase()}`);
   }
@@ -173,9 +206,13 @@ export async function filterReadableByUser<T extends PackageLike>(
     }
     // For list views we don't claim seats — this is a visibility check, not
     // a download. We just check if any qualifying entitlement exists.
-    const memberships = await listOrgsForUser(userId);
+    const [memberships, domainOrgs] = await Promise.all([
+      listOrgsForUser(userId),
+      implicitOrgsForEmailDomain(verifiedEmail),
+    ]);
     const granteeKeys = new Set<string>([`user#${userId}`]);
     for (const m of memberships) granteeKeys.add(`org#${m.orgId}`);
+    for (const orgId of domainOrgs) granteeKeys.add(`org#${orgId}`);
     if (verifiedEmail) {
       granteeKeys.add(`email#${verifiedEmail.trim().toLowerCase()}`);
     }
