@@ -1,54 +1,96 @@
 # Dash Registry
 
-Widget marketplace for the [Dash](https://github.com/trops/dash) Electron dashboard app. Browse, discover, and install community-built widgets.
+Package registry and marketplace for the [Dash](https://github.com/trops/dash-electron) Electron dashboard app. Browse, discover, and install community-built widgets, dashboards, and themes.
 
-**Live site:** [trops.github.io/dash-registry](https://trops.github.io/dash-registry/) — deployed to GitHub Pages via the `deploy.yml` workflow on push to `main`.
+**Live site:** [main.d919rwhuzp7rj.amplifyapp.com](https://main.d919rwhuzp7rj.amplifyapp.com) — deployed on AWS Amplify on push to `main`.
 
-## Tech Stack
+## Architecture
 
-- **Next.js 14** — static export (`output: "export"`)
-- **Tailwind CSS** — styling
-- **Fuse.js** — client-side fuzzy search
-- **GitHub Actions** — CI/CD (PR validation + deploy)
+| Layer | Tech |
+|---|---|
+| Web app | Next.js 14 (App Router, server-rendered) |
+| UI | React 18, Tailwind CSS, Fuse.js (client-side search) |
+| Auth | AWS Cognito (Hosted UI + JWT verification) |
+| Data | DynamoDB (`Package`, `PackageVersion`, `Entitlement`, `User`, `Org`, `OrgMember`, `OrgDomain`, `InstallLog`) |
+| Storage | S3 (zipped package contents, served via pre-signed URLs for private packages) |
+| Backend | Amplify Gen 2 (`amplify/backend.ts` provisions Cognito + DynamoDB + S3) |
+| Hosting | AWS Amplify (Next.js SSR app) |
 
-## Development
+DynamoDB is the **single source of truth** for packages. The legacy static `packages/{scope}/{name}/manifest.json` mechanism was removed in v1.5.9 — all reads now go through `/api/packages*` endpoints.
+
+## Local Development
 
 ```bash
 npm install
-npm run dev
+cp .env.local.example .env.local   # set Cognito + DynamoDB env vars
+npm run dev                          # http://localhost:3001
 ```
+
+Dev mode talks to the deployed Amplify backend by default. Override `DASH_REGISTRY_API_URL` to point at a local instance.
 
 ## Scripts
 
 | Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server (builds index first) |
-| `npm run build` | Production build to `out/` |
-| `npm run check` | Full validation pipeline: validate + lint + build |
-| `npm run validate` | Validate all package manifests |
-| `npm run lint` | Run Next.js linter |
-| `npm run build-index` | Aggregate manifests into `public/registry-index.json` |
-| `npm run create-project -- <name> [WidgetName]` | Scaffold a new widget project from the Dash template |
+|---|---|
+| `npm run dev` | Start the Next.js dev server on port 3001 |
+| `npm run build` | Production build |
+| `npm run start` | Start the production server |
+| `npm run lint` | ESLint via `next lint` |
+| `npm run test` | Vitest unit tests |
+| `npm run check` | Lint + test + build (run before committing) |
+| `npm run create-project -- <name> [WidgetName]` | Scaffold a new widget package locally from the Dash template |
+| `npm run ci` / `ci:commit` / `ci:push` / `ci:pr` / `ci:release` | The local CI script — see `scripts/ci.sh` |
 
 ## Project Structure
 
 ```
-packages/              # Scoped widget package manifests
-  trops/               # Scope (GitHub username)
-    dash-samples/
-      manifest.json    # Package manifest (schema in CONTRIBUTING.md)
+amplify/                          # Amplify Gen 2 backend (Cognito, DynamoDB, S3)
+docs/
+  AMPLIFY_BACKEND.md              # Backend architecture deep-dive
 scripts/
-  build-index.js       # Aggregates manifests → registry-index.json
-  validate-packages.js # Manifest validation (runs in CI)
+  ci.sh                           # Local validation + release pipeline
+  create-project.js               # Scaffold a new widget project
+  smoke-test-private-packages.js  # Manual smoke test for private package flow
 src/
-  app/                 # Next.js app router pages
-  components/          # React components
-  lib/                 # Registry data loading
+  app/                            # Next.js App Router pages + API routes
+    api/
+      packages/                   # List + detail + resolve + download
+      publish/                    # POST: publish a package (auth required)
+      auth/                       # Sign in, profile, owned packages
+      orgs/                       # Org management + member grants
+      ...
+    account/                      # User dashboard (owned packages, entitlements)
+    package/[scope]/[name]/       # Public package detail page
+  components/                     # React components (PackageCard, SearchBar, etc.)
+  lib/
+    db.ts                         # DynamoDB client + table helpers
+    s3.ts                         # S3 client + presigned URLs
+    auth.ts                       # JWT verification (Cognito)
+    entitlement.ts                # Private-package entitlement logic
+    registry.ts                   # Type definitions (Package, Widget, etc.)
 ```
 
-## Adding a Package
+## Publishing a Package
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide on adding, updating, deprecating, and removing packages.
+Packages are published **from the Dash desktop app**, not via PR to this repo:
+
+1. In Dash: Settings → Widgets / Dashboards / Themes → select a package → click **Publish…**
+2. The app:
+   - Generates a manifest (scoped to your registry username)
+   - Zips the package source
+   - Posts to `/api/publish` with auth
+3. The endpoint:
+   - Validates the manifest
+   - Uploads the ZIP to S3
+   - Writes Package + PackageVersion rows to DynamoDB
+   - Auto-grants the publisher an owner entitlement
+4. The package is immediately discoverable via `/api/packages` and the website's homepage.
+
+For the full publish flow + manifest schema, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Backend Architecture
+
+For a deep-dive on Cognito + DynamoDB + S3 wiring, IAM policies, the entitlement model, and the install-log audit trail, see [`docs/AMPLIFY_BACKEND.md`](docs/AMPLIFY_BACKEND.md).
 
 ## License
 

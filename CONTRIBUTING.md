@@ -1,131 +1,119 @@
 # Contributing to Dash Registry
 
-Thanks for your interest in contributing a widget package to the Dash Registry!
+Thanks for your interest in publishing a package to the Dash Registry!
 
-## Adding a New Package
+There are two contribution paths:
 
-1. **Create a directory** under `packages/{scope}/{name}/` where scope is your GitHub username (lowercase):
-   ```
-   packages/yourname/my-widgets/
-   ```
+1. **Publishing a package** (most contributors) — done through the Dash desktop app, no PR to this repo required. See below.
+2. **Contributing to the registry codebase** (Next.js app, API routes, UI) — open a PR against `main`. See [README.md](README.md) for development setup.
 
-2. **Create a `manifest.json`** in that directory following the schema below.
+## Publishing a Package
 
-3. **Open a Pull Request** against `main`. The CI pipeline will validate your manifest, run linting, and build the site.
+Packages live in DynamoDB + S3. The Dash desktop app handles the publish flow end-to-end.
 
-4. A maintainer will review and merge your PR.
+### Prerequisites
+
+- A registry account (created automatically the first time you sign in via the Dash app)
+- A Dash widget, dashboard, or theme installed locally that you authored
+
+### Publish Flow
+
+1. **Open the Dash app** → Settings
+2. **Pick what to publish:**
+   - **Widgets** → Settings → Widgets → select the widget → click `Publish…`
+   - **Dashboards** → Settings → Dashboards → select the dashboard → click `Publish…` (the publish flow walks you through dependencies — owned widgets + theme can be published in the same pass)
+   - **Themes** → Settings → Themes → select the theme → click `Publish…`
+3. **Sign in** to the registry if you haven't already (Dash uses Cognito Hosted UI)
+4. **Pick visibility:** `public` (anyone can install) or `private` (only you + people you grant access)
+5. **Click Publish.** The app generates a manifest, zips the package source, and POSTs to `/api/publish`.
+
+The package is immediately discoverable on the registry website and in other Dash users' Discover tab (assuming compatible visibility/entitlements).
+
+### What Gets Stored
+
+| Where | What |
+|---|---|
+| `Package` table | Latest metadata: scope, name, displayName, description, type, category, tags, latestVersion, ownerId, visibility |
+| `PackageVersion` table | One row per published version: full manifest snapshot + downloadUrl + appOrigin |
+| `Entitlement` table | An "owner" entitlement for the publisher (auto-created); plus any explicit grants you make later |
+| S3 bucket | The zipped package source — public packages get a long-lived URL, private get pre-signed 60-second URLs |
 
 ## Manifest Schema
+
+The Dash app generates the manifest for you, but if you're integrating with `/api/publish` directly, here's what the validator (`src/lib/validate.ts`) accepts.
 
 ### Required Fields
 
 | Field | Type | Rules |
-|-------|------|-------|
-| `name` | `string` | Kebab-case, 2–50 chars, must match directory name |
-| `scope` | `string` | GitHub username (lowercase), must match scope directory |
+|---|---|---|
+| `scope` | `string` | Your registry username (lowercase). Must match the authenticated user's scope — the publish endpoint enforces this. |
+| `name` | `string` | Kebab-case, 2–50 chars |
 | `displayName` | `string` | Non-empty, max 100 chars |
 | `version` | `string` | Valid semver (e.g., `1.0.0`, `2.1.0-beta`) |
-| `downloadUrl` | `string` | HTTPS URL (may contain `{version}` and `{name}` placeholders) |
-| `widgets` | `array` | Non-empty array of widget objects (see below) |
+| `appOrigin` | `string` | The Dash app identifier (e.g., `@trops/dash-electron`) — used for compatibility filtering in Discover |
+| `widgets` | `array` | For widget + dashboard packages: non-empty array of widget objects (see below). Theme packages skip this. |
+| `colors` | `object` | For theme packages only: must include `primary`, `secondary`, `tertiary` |
 
 ### Optional Fields
 
 | Field | Type | Rules |
-|-------|------|-------|
-| `author` | `string` | Max 100 chars |
+|---|---|---|
+| `type` | `string` | `widget` (default), `dashboard`, or `theme` |
+| `visibility` | `string` | `public` (default) or `private` |
+| `author` | `string` | Max 100 chars — defaults to your registry display name |
 | `description` | `string` | Max 500 chars |
 | `category` | `string` | One of: `general`, `utilities`, `productivity`, `development`, `social`, `media`, `finance`, `health`, `education`, `other` |
 | `tags` | `string[]` | Max 10 items, each lowercase, max 30 chars |
+| `icon` | `string` | FontAwesome icon name |
+| `providers` | `array` | Aggregate providers required across the package |
 | `repository` | `string` | HTTPS URL |
-| `publishedAt` | `string` | ISO 8601 date (e.g., `2026-01-15T10:00:00Z`) |
-| `deprecated` | `boolean` | Mark the package as deprecated |
-| `deprecatedMessage` | `string` | Explanation for deprecation |
+| `theme` | `object` | For dashboard packages bundling a theme |
 
-### Widget Object
-
-Each entry in the `widgets` array:
+### Widget Object (inside `widgets[]`)
 
 | Field | Type | Required | Rules |
-|-------|------|----------|-------|
+|---|---|---|---|
 | `name` | `string` | Yes | PascalCase (e.g., `CurrentWeather`) |
 | `displayName` | `string` | Yes | Non-empty |
 | `description` | `string` | Yes | Non-empty |
 | `icon` | `string` | No | Icon identifier |
-| `providers` | `array` | No | Array of `{ type: string, required: boolean }` |
+| `providers` | `array` | No | Array of `{ type, required, providerClass }` |
 
-### Example
+### Naming Rules
 
-```json
-{
-    "name": "my-widgets",
-    "scope": "yourname",
-    "displayName": "My Widgets",
-    "author": "Your Name",
-    "description": "A collection of useful widgets.",
-    "version": "1.0.0",
-    "category": "utilities",
-    "tags": ["example"],
-    "downloadUrl": "https://github.com/you/my-widgets/releases/download/v{version}/my-widgets-v{version}.zip",
-    "repository": "https://github.com/you/my-widgets",
-    "publishedAt": "2026-01-01T00:00:00Z",
-    "widgets": [
-        {
-            "name": "ExampleWidget",
-            "displayName": "Example Widget",
-            "description": "Does something useful.",
-            "icon": "sun",
-            "providers": [{ "type": "some-api", "required": true }]
-        }
-    ]
-}
-```
+- **Scope**: your registry username, lowercase. Always rewritten to your authenticated scope at publish time — local conventions like `@ai-built/…` are remapped to your scope automatically.
+- **Package name**: kebab-case (`my-cool-widgets`), 2–50 characters
+- **Widget name**: PascalCase (`MyCoolWidget`)
+- No duplicate widget names within a package
 
 ## Updating a Package
 
-1. Update the `manifest.json` in your package directory (bump `version`, update fields).
-2. Open a PR — the same validation pipeline runs.
+Just publish again from the Dash app — the publish modal lets you bump the version (patch/minor/major) and writes a new `PackageVersion` row. The `Package.latestVersion` is updated atomically. Old versions stay available in `PackageVersion`.
 
-## Removing a Package
+## Visibility & Access Management
 
-### Who Can Remove
+- **Public** packages are visible and installable by anyone.
+- **Private** packages are visible only to:
+  - The owner (you), via an auto-created owner entitlement
+  - Users you've granted access via the Access Management page on the registry website (`/package/{scope}/{name}/access`)
+  - Org members (when you grant access to an org)
+  - Users whose verified email matches a domain you've verified for an org
 
-Only the **original package author** (or a designated maintainer) may request removal. The registry maintainer (@trops) verifies the requester's identity during PR review via CODEOWNERS.
+## Deprecation / Removal
 
-### Soft Deprecation (Recommended First Step)
+Currently:
 
-Add `"deprecated": true` and optionally `"deprecatedMessage"` to your `manifest.json`, then open a PR. The registry site will show a deprecation badge on the package card and a warning banner on the detail page. The Dash app can use this flag to warn users before they install.
+- **Soft deprecation:** flag in DynamoDB (planned UI). For now, set the package to private to hide it from public discovery.
+- **Hard removal:** contact a maintainer or use the registry website's package page (delete button — owner only).
 
-### Hard Removal
+## Contributing to the Registry Codebase
 
-To fully remove a package from the registry:
+Bug fixes, new features, UI improvements? Open a PR.
 
-1. Open a PR that deletes the entire `packages/{scope}/{name}/` directory
-2. In the PR description, state that you are the original author
-3. A maintainer will verify and merge
+1. Fork or branch from `main`
+2. `npm install` and `npm run dev`
+3. Make changes
+4. `npm run check` (lint + test + build)
+5. Open a PR
 
-After merge, the package will no longer appear on the registry site or in the Dash app's Discover tab.
-
-## URL Safety
-
-All URLs (`downloadUrl`, `repository`) must:
-- Start with `https://`
-- Be parseable as a valid URL
-- Not contain `<`, `>`, `"`, `'`, or backticks
-
-## Naming Rules
-
-- **Scope**: Your GitHub username, lowercase (e.g., `yourname`)
-- **Package name**: kebab-case (`my-cool-widgets`), 2–50 characters
-- **Widget name**: PascalCase (`MyCoolWidget`)
-- No duplicate package names within a scope
-- No duplicate widget names within a package
-
-## Local Validation
-
-Run the validation script locally before opening a PR:
-
-```bash
-npm run validate
-```
-
-This is the same check that runs in CI.
+See [README.md](README.md) and [CLAUDE.md](CLAUDE.md) for project structure, scripts, and the local CI workflow.

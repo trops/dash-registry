@@ -1,19 +1,27 @@
 # dash-registry
 
-Widget registry and marketplace for Dash. Built with Next.js 14, React 18, TypeScript, and Tailwind CSS.
+Package registry and marketplace for Dash. Built with Next.js 14, React 18, TypeScript, Tailwind CSS, and an Amplify-backed AWS stack (Cognito + DynamoDB + S3).
 
-**Live site:** https://trops.github.io/dash-registry/
+**Live site:** https://main.d919rwhuzp7rj.amplifyapp.com
 
 ## Project Structure
 
-- `packages/` — Scoped widget package manifests (`packages/{scope}/{name}/manifest.json`)
-- `scripts/` — Build and validation scripts (`build-index.js`, `validate-packages.js`)
-- `src/` — Next.js app source code
-- `public/` — Static assets including generated `registry-index.json`
+- `amplify/` — Amplify Gen 2 backend (Cognito User Pool, DynamoDB tables, S3 bucket)
+- `scripts/`
+  - `ci.sh` — Local validation + release pipeline
+  - `create-project.js` — Scaffold a new widget project from the Dash template
+  - `smoke-test-private-packages.js` — Manual smoke test for private package flow
+- `src/`
+  - `app/` — Next.js App Router pages + API routes
+  - `components/` — React components
+  - `lib/` — DB, S3, auth, entitlement helpers + shared types
+- `docs/AMPLIFY_BACKEND.md` — Backend architecture deep-dive
+
+DynamoDB is the single source of truth for packages. The legacy static `packages/{scope}/{name}/manifest.json` mechanism was removed in v1.5.9.
 
 ## Local CI Script (Recommended)
 
-The `scripts/ci.sh` script handles the full validation pipeline (Node 20 via nvm, manifest validation, ESLint, build) and optionally the git workflow:
+The `scripts/ci.sh` script handles the full validation pipeline (Node 20 via nvm, ESLint, Vitest, Next.js build) and optionally the git workflow:
 
 ```bash
 # Validate only
@@ -32,15 +40,15 @@ npm run ci:pr -- -m "Your commit message"
 npm run ci:release -- -m "Your commit message"
 ```
 
-Each flag is cumulative -- `--release` runs all prior steps. The script automatically switches to Node 20 using nvm.
+Each flag is cumulative — `--release` runs all prior steps. The script automatically switches to Node 20 using nvm.
 
 ## Commands
 
-- `npm run check` — Run full validation pipeline: validate + lint + build
-- `npm run validate` — Validate package manifests
-- `npm run lint` — ESLint
-- `npm run build` — Build index and Next.js site
-- `npm run dev` — Local dev server
+- `npm run check` — Run full validation pipeline: lint + test + build
+- `npm run lint` — ESLint via `next lint`
+- `npm run test` — Vitest unit tests
+- `npm run build` — Next.js production build
+- `npm run dev` — Local dev server (http://localhost:3001)
 - `npm run create-project -- <name> [WidgetName]` — Scaffold a new widget project from the dash-electron template
 
 ## Automation Cycle
@@ -60,7 +68,7 @@ gh pr create --title "..." --body "..."
 
 1. **Branch** — `git checkout -b feat/<name>` or `fix/<name>`
 2. **Change** — Edit files as needed
-3. **Validate** — `npm run check` (validate + lint + build)
+3. **Validate** — `npm run check` (lint + test + build)
 4. **Version** — `npm version patch|minor|major` (preversion hook re-runs check; aborts on failure)
 5. **Push** — `git push -u origin <branch>`
 6. **PR** — `gh pr create`
@@ -68,25 +76,33 @@ gh pr create --title "..." --body "..."
 ### Version Bump Guidance
 
 - **patch** — Bug fixes, metadata updates, small tweaks
-- **minor** — New packages added, new features
-- **major** — Breaking changes to registry schema or API
+- **minor** — New API endpoints, new features
+- **major** — Breaking changes to API contracts or DynamoDB schema
 
 ## Commit Messages
 
 Use conventional-style messages:
 
-- `feat: add <widget-name> package`
-- `fix: correct <widget-name> manifest`
-- `chore: update build scripts`
-- `docs: update README`
+- `feat: add <feature>` — new endpoint, new UI, new entitlement type
+- `fix: correct <area>` — bug fix
+- `chore: update <area>` — non-functional cleanup
+- `docs: update <doc>` — docs only
 
-## Package Manifests
+## Publishing Packages
 
-Each widget in `packages/` must have a valid JSON manifest. Run `npm run validate` to check all manifests against the schema.
+Packages are published from the Dash desktop app, not by editing this repo. The flow:
+
+1. User clicks Publish in Dash → app generates a manifest + zips the package
+2. App posts to `POST /api/publish` with auth
+3. The endpoint validates, uploads the ZIP to S3, writes Package + PackageVersion + owner Entitlement to DynamoDB
+4. The package is immediately discoverable via `/api/packages`
+
+See `CONTRIBUTING.md` for the full publish flow + manifest schema.
 
 ## Things to Avoid
 
 - Never push directly to main — always use feature branches and PRs
-- Never skip checks — `npm run check` mirrors the CI pipeline (`validate-pr.yml`)
+- Never skip checks — `npm run check` mirrors what CI runs
 - Never use `git push --force` or `git reset --hard`
 - Never bypass preversion hook with `--ignore-scripts`
+- Never re-introduce the static `packages/` mechanism — DynamoDB is canonical
