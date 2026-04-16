@@ -22,18 +22,10 @@ async function fetchPackages(): Promise<{
     ).sort();
     return { packages, appOrigins };
   } catch {
-    // Fallback to static registry index if API is unavailable
-    const { getAllPackages } = await import("@/lib/registry");
-    const packages = getAllPackages();
-    const appOrigins = Array.from(
-      new Set(
-        packages.map((p: Package) => p.appOrigin).filter(Boolean) as string[],
-      ),
-    ).sort();
-    return {
-      packages,
-      appOrigins,
-    };
+    // The static registry-index.json fallback was removed once all
+    // packages migrated to DynamoDB — return empty so the page still
+    // renders during a transient API outage.
+    return { packages: [], appOrigins: [] };
   }
 }
 
