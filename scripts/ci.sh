@@ -68,17 +68,16 @@ nvm use --delete-prefix v20.20.0
 echo "Node version: $(node -v)"
 echo "npm version: $(npm -v)"
 
-# 2. Validate manifests
-step "Validating package manifests"
-node scripts/validate-packages.js
-
-# 3. Lint
+# 2. Lint
 step "Running ESLint"
 npx next lint
 
+# 3. Test
+step "Running tests"
+npx vitest run
+
 # 4. Build
-step "Building (index + Next.js)"
-npm run build-index
+step "Building Next.js"
 npx next build
 
 echo ""
