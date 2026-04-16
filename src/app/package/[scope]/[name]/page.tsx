@@ -1,10 +1,11 @@
+"use client";
+
 import { WidgetList } from "@/components/WidgetList";
 import { ManageAccessLink } from "@/components/ManageAccessLink";
+import { useAuth } from "@/components/AuthContext";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { Package } from "@/lib/registry";
-
-export const dynamic = "force-dynamic";
 
 interface PackageVersion {
     version: string;
@@ -18,34 +19,113 @@ interface PackageDetail extends Package {
     visibility?: string;
 }
 
-async function fetchPackageDetail(
-    scope: string,
-    name: string,
-): Promise<PackageDetail | null> {
-    const baseUrl = process.env.REGISTRY_BASE_URL || "http://localhost:3000";
-    try {
-        const res = await fetch(`${baseUrl}/api/packages/${scope}/${name}`, {
-            cache: "no-store",
-        });
-        if (res.status === 404) return null;
-        if (!res.ok) throw new Error(`API error: ${res.status}`);
-        return await res.json();
-    } catch {
-        // Fallback to static registry
-        const { getPackageByScope } = await import("@/lib/registry");
-        return getPackageByScope(scope, name) || null;
-    }
-}
-
-export default async function PackageDetailPage({
+export default function PackageDetailPage({
     params,
 }: {
     params: { scope: string; name: string };
 }) {
-    const pkg = await fetchPackageDetail(params.scope, params.name);
+    const { scope, name } = params;
+    const { getAccessToken, isAuthenticated, isLoading: authLoading } =
+        useAuth();
 
-    if (!pkg) {
-        notFound();
+    const [pkg, setPkg] = useState<PackageDetail | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
+
+    useEffect(() => {
+        // Wait for auth to settle so we either send a token (if signed in)
+        // or fire anonymously — not somewhere in between.
+        if (authLoading) return;
+
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            setNotFound(false);
+            try {
+                const headers: Record<string, string> = {};
+                if (isAuthenticated) {
+                    const token = await getAccessToken();
+                    if (token) headers.Authorization = `Bearer ${token}`;
+                }
+                const res = await fetch(`/api/packages/${scope}/${name}`, {
+                    headers,
+                    cache: "no-store",
+                });
+                if (cancelled) return;
+                if (res.status === 404) {
+                    setNotFound(true);
+                } else if (res.ok) {
+                    setPkg(await res.json());
+                } else {
+                    setNotFound(true);
+                }
+            } catch {
+                if (!cancelled) setNotFound(true);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [scope, name, isAuthenticated, authLoading, getAccessToken]);
+
+    if (authLoading || loading) {
+        return (
+            <div className="max-w-4xl mx-auto px-6 py-12">
+                <div className="mb-6">
+                    <Link
+                        href="/"
+                        className="text-sm text-dash-accent hover:underline"
+                    >
+                        &larr; Back to Registry
+                    </Link>
+                </div>
+                <div className="text-sm text-dash-muted py-8 text-center">
+                    Loading package…
+                </div>
+            </div>
+        );
+    }
+
+    if (notFound || !pkg) {
+        return (
+            <div className="max-w-4xl mx-auto px-6 py-12">
+                <div className="mb-6">
+                    <Link
+                        href="/"
+                        className="text-sm text-dash-accent hover:underline"
+                    >
+                        &larr; Back to Registry
+                    </Link>
+                </div>
+                <div className="p-5 rounded-lg bg-dash-surface border border-dash-border text-dash-muted">
+                    <h1 className="text-xl font-semibold text-white mb-2">
+                        Package not found
+                    </h1>
+                    <p className="text-sm">
+                        <span className="font-mono">
+                            {scope}/{name}
+                        </span>{" "}
+                        doesn&apos;t exist, or you don&apos;t have access to
+                        view it.
+                        {!isAuthenticated && (
+                            <>
+                                {" "}
+                                If this is a private package you own,{" "}
+                                <Link
+                                    href="/account"
+                                    className="text-dash-accent hover:underline"
+                                >
+                                    sign in
+                                </Link>
+                                .
+                            </>
+                        )}
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -198,42 +278,45 @@ export default async function PackageDetailPage({
             )}
 
             {/* Theme Colors (standalone themes) */}
-            {pkg.type === "theme" && (() => {
-                const colors = pkg.colors || pkg.theme?.colors;
-                if (!colors) return null;
-                const entries = (["primary", "secondary", "tertiary"] as const)
-                    .map((key) => ({ key, value: colors[key] }))
-                    .filter((e) => e.value);
-                if (entries.length === 0) return null;
-                return (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-semibold text-white mb-4">
-                            Theme Colors
-                        </h2>
-                        <div className="flex items-center gap-6">
-                            {entries.map(({ key, value }) => (
-                                <div
-                                    key={key}
-                                    className="flex flex-col items-center gap-2"
-                                >
+            {pkg.type === "theme" &&
+                (() => {
+                    const colors = pkg.colors || pkg.theme?.colors;
+                    if (!colors) return null;
+                    const entries = (
+                        ["primary", "secondary", "tertiary"] as const
+                    )
+                        .map((key) => ({ key, value: colors[key] }))
+                        .filter((e) => e.value);
+                    if (entries.length === 0) return null;
+                    return (
+                        <div className="mb-8">
+                            <h2 className="text-lg font-semibold text-white mb-4">
+                                Theme Colors
+                            </h2>
+                            <div className="flex items-center gap-6">
+                                {entries.map(({ key, value }) => (
                                     <div
-                                        className="h-16 w-16 rounded-lg border-2 border-dash-border"
-                                        style={{
-                                            backgroundColor: value,
-                                        }}
-                                    />
-                                    <span className="text-sm text-white capitalize">
-                                        {key}
-                                    </span>
-                                    <span className="text-xs text-dash-muted font-mono">
-                                        {value}
-                                    </span>
-                                </div>
-                            ))}
+                                        key={key}
+                                        className="flex flex-col items-center gap-2"
+                                    >
+                                        <div
+                                            className="h-16 w-16 rounded-lg border-2 border-dash-border"
+                                            style={{
+                                                backgroundColor: value,
+                                            }}
+                                        />
+                                        <span className="text-sm text-white capitalize">
+                                            {key}
+                                        </span>
+                                        <span className="text-xs text-dash-muted font-mono">
+                                            {value}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                );
-            })()}
+                    );
+                })()}
 
             {/* Bundled Theme */}
             {pkg.theme && (
