@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
         new Date(a.updatedAt as string).getTime(),
     );
 
-    return NextResponse.json({ packages });
+    // Normalize: add `version` alias of `latestVersion` so UI code that
+    // reads pkg.version works the same as the public /api/packages route.
+    const normalized = packages.map((pkg) => ({
+      ...pkg,
+      version: pkg.latestVersion,
+    }));
+
+    return NextResponse.json({ packages: normalized });
   } catch (err) {
     console.error("[API /auth/me/packages] Error:", err);
     return NextResponse.json(
