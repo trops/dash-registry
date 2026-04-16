@@ -289,10 +289,10 @@ export default function AccessPage() {
             <div className="max-w-3xl mx-auto px-6 py-12">
                 <div className="mb-6">
                     <Link
-                        href={`/package/${scope}/${name}`}
+                        href="/account"
                         className="text-sm text-dash-accent hover:underline"
                     >
-                        &larr; Back to package
+                        &larr; Back to account
                     </Link>
                 </div>
                 <div className="bg-red-900/20 border border-red-800/40 rounded-lg p-4 text-red-300">
@@ -307,10 +307,10 @@ export default function AccessPage() {
             <div className="max-w-3xl mx-auto px-6 py-12">
                 <div className="mb-6">
                     <Link
-                        href={`/package/${scope}/${name}`}
+                        href="/account"
                         className="text-sm text-dash-accent hover:underline"
                     >
-                        &larr; Back to package
+                        &larr; Back to account
                     </Link>
                 </div>
                 <div className="bg-yellow-900/20 border border-yellow-800/40 rounded-lg p-4 text-yellow-300">
@@ -326,10 +326,10 @@ export default function AccessPage() {
         <div className="max-w-3xl mx-auto px-6 py-12">
             <div className="mb-6">
                 <Link
-                    href={`/package/${scope}/${name}`}
+                    href="/account"
                     className="text-sm text-dash-accent hover:underline"
                 >
-                    &larr; Back to {pkg?.displayName || `${scope}/${name}`}
+                    &larr; Back to account
                 </Link>
             </div>
 
