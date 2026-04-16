@@ -9,9 +9,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
 import { getUserByCognitoId } from "@/lib/db";
-import { putPackage, putPackageVersion, getPackage } from "@/lib/db";
+import {
+    putPackage,
+    putPackageVersion,
+    getPackage,
+    listEntitlementsForPackage,
+    putEntitlement,
+} from "@/lib/db";
 import { uploadPackageZip, buildS3Key } from "@/lib/s3";
 import { validateManifest } from "@/lib/validate";
+import { buildEntitlement } from "@/lib/entitlement";
 
 export async function POST(request: NextRequest) {
     // 1. Authenticate
@@ -173,7 +180,49 @@ export async function POST(request: NextRequest) {
         }
         await putPackageVersion(versionRecord);
 
-        // 12. Return success
+        // 12. Self-grant entitlement for the owner — surfaces them in the
+        //     access management UI and means owners are entitled the same
+        //     way as any other grantee (the entitlement check still has a
+        //     dedicated isOwner short-circuit, this is for transparency).
+        //     Idempotent: skip if any owner-source entitlement already
+        //     exists for this user/package pair.
+        try {
+            const existingEntitlements = await listEntitlementsForPackage(
+                scope,
+                manifest.name,
+            );
+            const ownerKey = `user#${token.sub}`;
+            const alreadyEntitled = existingEntitlements.some(
+                (e) =>
+                    !e.revokedAt &&
+                    e.granteeKey === ownerKey &&
+                    e.source === "owner",
+            );
+            if (!alreadyEntitled) {
+                await putEntitlement(
+                    buildEntitlement({
+                        packageScope: scope,
+                        packageName: manifest.name,
+                        versionConstraint: "*",
+                        granteeType: "user",
+                        granteeId: token.sub,
+                        seats: null,
+                        source: "owner",
+                        createdByUserId: token.sub,
+                    }),
+                );
+            }
+        } catch (err) {
+            // Don't fail the publish if the self-grant write fails — the
+            // isOwner check in checkEntitlement still gives the owner
+            // access. Log for diagnosis.
+            console.warn(
+                "[API /publish] Could not write owner self-grant entitlement:",
+                err,
+            );
+        }
+
+        // 13. Return success
         const registryUrl = `${registryBaseUrl}/package/${scope}/${manifest.name}`;
 
         return NextResponse.json({
