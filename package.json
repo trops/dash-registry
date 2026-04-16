@@ -1,6 +1,6 @@
 {
     "name": "dash-registry",
-    "version": "1.5.9",
+    "version": "1.5.10",
     "private": true,
     "description": "Package registry and marketplace for Dash",
     "scripts": {
