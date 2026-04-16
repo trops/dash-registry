@@ -40,7 +40,14 @@ export async function GET(request: NextRequest) {
                 null;
         }
 
-        const rawPackages = await listPackages({ search, category, type, appOrigin, providerTypes });
+        const rawPackages = await listPackages({
+            search,
+            category,
+            type,
+            appOrigin,
+            providerTypes,
+            requesterId: userId,
+        });
         const packages = (await filterReadableByUser(
             rawPackages as Parameters<typeof filterReadableByUser>[0],
             userId,
