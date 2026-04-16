@@ -194,8 +194,12 @@ export async function listPackages(filters?: {
   appOrigin?: string;
   providerTypes?: string[];
 }) {
-  const filterParts: string[] = ["visibility = :vis"];
-  const exprValues: Record<string, string> = { ":vis": "public" };
+  // NOTE: visibility filtering happens in `filterReadableByUser` at the
+  // route layer — owners + entitled users need to see private packages
+  // they can read, so we can't pre-filter at the DB level. The trade-off
+  // is a slightly larger scan; acceptable while the registry is small.
+  const filterParts: string[] = [];
+  const exprValues: Record<string, string> = {};
   const exprNames: Record<string, string> = {};
 
   if (filters?.category) {
@@ -215,8 +219,12 @@ export async function listPackages(filters?: {
   const result = await docClient.send(
     new ScanCommand({
       TableName: TABLES.PACKAGES,
-      FilterExpression: filterParts.join(" AND "),
-      ExpressionAttributeValues: exprValues,
+      ...(filterParts.length > 0 && {
+        FilterExpression: filterParts.join(" AND "),
+      }),
+      ...(Object.keys(exprValues).length > 0 && {
+        ExpressionAttributeValues: exprValues,
+      }),
       ...(Object.keys(exprNames).length > 0 && {
         ExpressionAttributeNames: exprNames,
       }),
