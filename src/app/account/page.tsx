@@ -6,7 +6,7 @@
  * Uses the Amplify Authenticator for email/password auth.
  * After sign-in, shows profile from AuthContext and published packages.
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Authenticator, ThemeProvider } from "@aws-amplify/ui-react";
 import { useAuth } from "@/components/AuthContext";
 import AuthSync from "@/components/AuthSync";
@@ -83,8 +83,22 @@ interface PackageItem {
   visibility?: string;
   category?: string;
   tags?: string[];
+  type?: string;
   updatedAt?: string;
 }
+
+const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
+  { label: "All", value: null },
+  { label: "Widgets", value: "widget" },
+  { label: "Dashboards", value: "dashboard" },
+  { label: "Themes", value: "theme" },
+];
+
+const VISIBILITY_FILTERS: Array<{ label: string; value: string | null }> = [
+  { label: "All", value: null },
+  { label: "Public", value: "public" },
+  { label: "Private", value: "private" },
+];
 
 export default function AccountPage() {
   const {
@@ -115,6 +129,11 @@ export default function AccountPage() {
   // Published packages
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(false);
+  // Search / filter state
+  const [query, setQuery] = useState("");
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [filterVisibility, setFilterVisibility] = useState<string | null>(null);
+  const [filterTag, setFilterTag] = useState<string | null>(null);
   const [editingPkg, setEditingPkg] = useState<string | null>(null); // "scope/name"
   const [editForm, setEditForm] = useState<{
     description: string;
@@ -267,6 +286,41 @@ export default function AccountPage() {
     }
   }
 
+  // Derived filter state
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const pkg of packages) {
+      for (const t of pkg.tags || []) set.add(t);
+    }
+    return Array.from(set).sort();
+  }, [packages]);
+
+  const filteredPackages = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return packages.filter((pkg) => {
+      if (filterType && (pkg.type || "widget") !== filterType) return false;
+      if (filterVisibility && (pkg.visibility || "public") !== filterVisibility)
+        return false;
+      if (filterTag && !(pkg.tags || []).includes(filterTag)) return false;
+      if (!q) return true;
+      const hay = [
+        pkg.name,
+        pkg.displayName,
+        pkg.description,
+        pkg.category,
+        (pkg.tags || []).join(" "),
+        pkg.scope,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [packages, query, filterType, filterVisibility, filterTag]);
+
+  const activeFilterCount =
+    (filterType ? 1 : 0) + (filterVisibility ? 1 : 0) + (filterTag ? 1 : 0);
+
   if (authLoading) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-12">
@@ -385,18 +439,108 @@ export default function AccountPage() {
 
           {/* Published Packages */}
           <div className="p-6 rounded-lg bg-dash-surface border border-dash-border">
-            <h3 className="text-lg font-semibold text-white mb-4">
-              Published Packages
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Published Packages
+              </h3>
+              {packages.length > 0 && (
+                <span className="text-xs text-dash-muted">
+                  {filteredPackages.length} of {packages.length}
+                </span>
+              )}
+            </div>
+
+            {/* Search + filter controls — only render once there's
+                something to filter. */}
+            {packages.length > 0 && (
+              <div className="mb-4 space-y-3">
+                <input
+                  type="text"
+                  placeholder="Search packages…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full px-3 py-2 rounded bg-dash-bg border border-dash-border text-white placeholder-dash-muted focus:outline-none focus:ring-2 focus:ring-dash-accent focus:border-transparent text-sm"
+                />
+                <div className="flex flex-wrap gap-2 items-center">
+                  {/* Type pills */}
+                  <div className="flex gap-1 bg-dash-bg rounded-md border border-dash-border p-0.5">
+                    {TYPE_FILTERS.map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setFilterType(opt.value)}
+                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                          filterType === opt.value
+                            ? "bg-dash-accent/20 text-dash-accent font-medium"
+                            : "text-dash-muted hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Visibility pills */}
+                  <div className="flex gap-1 bg-dash-bg rounded-md border border-dash-border p-0.5">
+                    {VISIBILITY_FILTERS.map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setFilterVisibility(opt.value)}
+                        className={`px-2.5 py-1 text-xs rounded transition-colors ${
+                          filterVisibility === opt.value
+                            ? "bg-dash-accent/20 text-dash-accent font-medium"
+                            : "text-dash-muted hover:text-white"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Tag dropdown — only shown when tags exist */}
+                  {availableTags.length > 0 && (
+                    <select
+                      value={filterTag || ""}
+                      onChange={(e) => setFilterTag(e.target.value || null)}
+                      className="px-2.5 py-1 text-xs rounded bg-dash-bg border border-dash-border text-white focus:outline-none focus:ring-1 focus:ring-dash-accent"
+                    >
+                      <option value="">All tags</option>
+                      {availableTags.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterType(null);
+                        setFilterVisibility(null);
+                        setFilterTag(null);
+                      }}
+                      className="text-xs text-dash-muted hover:text-white px-2"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {packagesLoading ? (
               <p className="text-sm text-dash-muted">Loading packages...</p>
             ) : packages.length === 0 ? (
               <p className="text-sm text-dash-muted">
                 Publish from the Dash app to see your packages here.
               </p>
+            ) : filteredPackages.length === 0 ? (
+              <p className="text-sm text-dash-muted py-4 text-center">
+                No packages match your search.
+              </p>
             ) : (
               <div className="space-y-3">
-                {packages.map((pkg) => {
+                {filteredPackages.map((pkg) => {
                   const key = `${pkg.scope}/${pkg.name}`;
                   const isEditing = editingPkg === key;
 
