@@ -1,6 +1,18 @@
 version: 1
 applications:
-  - frontend:
+  - backend:
+      phases:
+        build:
+          commands:
+            # Amplify Gen 2 backend deploy. Runs CDK synth + CloudFormation
+            # for everything defined in /amplify (auth, storage,
+            # backend.ts with its CDK escape hatches). Without this phase,
+            # backend.ts changes never take effect — the frontend-only
+            # version of this file was silently leaving Cognito / IAM /
+            # DynamoDB out of the deploy pipeline.
+            - npm ci --cache .npm --prefer-offline
+            - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+    frontend:
       phases:
         preBuild:
           commands:
