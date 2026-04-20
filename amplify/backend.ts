@@ -69,9 +69,16 @@ if (googleIdp) {
     // Force Google's account picker so users can choose a different
     // account on every sign-in instead of being silently returned as
     // whichever Google account their browser session points at.
+    // CFN's UserPoolIdentityProvider.ProviderDetails is a string→string
+    // map (JSON passes through unchanged on describe responses for
+    // most fields), but `authorize_request_extra_params` specifically
+    // must be a **JSON-encoded string**, not an object. Passing an
+    // object here triggers:
+    //   #/ProviderDetails/authorize_request_extra_params:
+    //     expected type: String, found: JSONObject
     googleIdp.addPropertyOverride(
         "ProviderDetails.authorize_request_extra_params",
-        { prompt: "select_account" },
+        JSON.stringify({ prompt: "select_account" }),
     );
 }
 
