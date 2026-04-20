@@ -10,7 +10,13 @@ applications:
             # backend.ts changes never take effect — the frontend-only
             # version of this file was silently leaving Cognito / IAM /
             # DynamoDB out of the deploy pipeline.
-            - npm ci --cache .npm --prefer-offline
+            #
+            # Use `npm install --no-audit --no-fund` (not `npm ci`) for
+            # the same reason the frontend phase does — see PR #61 —
+            # transitive wasm-CPU optional deps aren't strictly lockable
+            # across macOS dev + Linux CI, and `npm ci` rejects the
+            # cross-platform drift.
+            - npm install --no-audit --no-fund
             - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
     frontend:
       phases:
