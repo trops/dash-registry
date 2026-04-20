@@ -9,12 +9,34 @@ import { defineBackend } from "@aws-amplify/backend";
 import { auth } from "./auth/resource";
 import { storage } from "./storage/resource";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import { CfnUserPoolIdentityProvider } from "aws-cdk-lib/aws-cognito";
 import { RemovalPolicy } from "aws-cdk-lib";
 
 const backend = defineBackend({
     auth,
     storage,
 });
+
+// Force Google to show the account picker on every sign-in instead of
+// silently using the browser's default Google session. Cognito's native
+// Google IDP doesn't expose an authorize-params knob, so we reach down
+// via CDK escape hatch and override the underlying CFN resource's
+// providerDetails.authorize_url to include ?prompt=select_account.
+// Cognito appends its standard OAuth params with `&` so this cleanly
+// threads through to Google.
+const googleIdp = backend.auth.stack.node
+    .findAll()
+    .find(
+        (c): c is CfnUserPoolIdentityProvider =>
+            c instanceof CfnUserPoolIdentityProvider &&
+            c.providerName === "Google",
+    );
+if (googleIdp) {
+    googleIdp.addPropertyOverride(
+        "ProviderDetails.authorize_url",
+        "https://accounts.google.com/o/oauth2/v2/auth?prompt=select_account",
+    );
+}
 
 // --- DynamoDB Tables (CDK escape hatch) ---
 
