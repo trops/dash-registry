@@ -16,7 +16,29 @@ import { auth } from "./auth/resource.ts";
 import { storage } from "./storage/resource.ts";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CfnUserPoolIdentityProvider } from "aws-cdk-lib/aws-cognito";
-import { RemovalPolicy, SecretValue } from "aws-cdk-lib";
+import { RemovalPolicy } from "aws-cdk-lib";
+import { execSync } from "node:child_process";
+
+/**
+ * Resolve an SSM SecureString parameter synchronously at CDK synth time.
+ *
+ * Cognito IDP ProviderDetails rejects CloudFormation dynamic references
+ * (`{{resolve:ssm-secure:...}}`) for client_id / client_secret — we
+ * verified this: CFN errors with "SSM Secure reference is not supported
+ * in: [AWS::Cognito::UserPoolIdentityProvider/.../client_secret, .../client_id]".
+ * So we have to bake concrete values into the synthesized template.
+ *
+ * The template ends up in `.amplify/artifacts/cdk.out/` (gitignored,
+ * local to the developer's machine). Secrets stay in SSM Parameter
+ * Store as the source of truth; they just also appear in the on-disk
+ * template for the duration of a deploy.
+ */
+function readSsmSecureString(name: string): string {
+    return execSync(
+        `aws ssm get-parameter --with-decryption --name ${JSON.stringify(name)} --query Parameter.Value --output text`,
+        { encoding: "utf8" },
+    ).trim();
+}
 
 const backend = defineBackend({
     auth,
@@ -54,16 +76,15 @@ const googleIdp = new CfnUserPoolIdentityProvider(
         providerName: "Google",
         providerType: "OIDC",
         // Secrets live in SSM (set by `ampx sandbox secret set GOOGLE_*`).
-        // `SecretValue.ssmSecure()` produces a dynamic reference that
-        // CloudFormation resolves at deploy time without materializing
-        // the value in the template.
+        // Resolved at synth time because CFN rejects dynamic references
+        // for these fields — see readSsmSecureString() comment.
         providerDetails: {
-            client_id: SecretValue.ssmSecure(
+            client_id: readSsmSecureString(
                 "/amplify/dashregistry/johngiatropoulos-sandbox-e718e335ed/GOOGLE_CLIENT_ID",
-            ).unsafeUnwrap(),
-            client_secret: SecretValue.ssmSecure(
+            ),
+            client_secret: readSsmSecureString(
                 "/amplify/dashregistry/johngiatropoulos-sandbox-e718e335ed/GOOGLE_CLIENT_SECRET",
-            ).unsafeUnwrap(),
+            ),
             oidc_issuer: "https://accounts.google.com",
             authorize_scopes: "openid email profile",
             attributes_request_method: "GET",
