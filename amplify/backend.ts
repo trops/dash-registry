@@ -6,12 +6,14 @@
  * composite sort keys are incompatible with the raw SDK calls in db.ts.
  */
 import { defineBackend } from "@aws-amplify/backend";
-// Use explicit .js extensions on relative imports so Node's ESM loader
-// (used during CDK assembly after TypeScript synth) can resolve them —
-// the `bundler` moduleResolution in tsconfig accepts both forms, but
-// Node's ESM at runtime requires the extension.
-import { auth } from "./auth/resource.js";
-import { storage } from "./storage/resource.js";
+// Node 22.6+ native TypeScript loader (used by ampx during CDK
+// assembly on this machine — Node v24) strips types from .ts files
+// but does NOT probe file extensions on relative imports. It needs
+// the exact `.ts` extension. The `bundler` moduleResolution setting
+// in tsconfig allows this syntax and ts would also happily resolve
+// without it, but the Node runtime loader is strict.
+import { auth } from "./auth/resource.ts";
+import { storage } from "./storage/resource.ts";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CfnUserPoolIdentityProvider } from "aws-cdk-lib/aws-cognito";
 import { RemovalPolicy } from "aws-cdk-lib";
