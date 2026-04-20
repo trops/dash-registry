@@ -20,6 +20,13 @@ import {
   type AuthUser,
 } from "aws-amplify/auth";
 import { Hub } from "aws-amplify/utils";
+import { Amplify } from "aws-amplify";
+
+// Sentinels used to survive a Cognito hosted-UI /logout round-trip so
+// we can re-trigger signInWithRedirect after the session cookie has
+// been cleared. See signInWithGoogle below.
+const SIGNIN_PROVIDER_KEY = "dashSigninProvider";
+const SIGNIN_RETURN_PATH_KEY = "dashSigninReturnPath";
 
 // Extract OAuth return path from the callback URL before Amplify clears it.
 // The OAuth state parameter format is {random}-{hex_encoded_custom_state}.
@@ -171,6 +178,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
+  // Resume Google sign-in after the Cognito /logout round-trip used by
+  // signInWithGoogle to clear the hosted-UI session cookie. The provider
+  // sentinel is per-tab sessionStorage, so this fires at most once per
+  // sign-in attempt and only in the tab that kicked it off.
+  useEffect(() => {
+    let cancelled = false;
+    try {
+      const provider = sessionStorage.getItem(SIGNIN_PROVIDER_KEY);
+      if (provider === "Google") {
+        const returnPath =
+          sessionStorage.getItem(SIGNIN_RETURN_PATH_KEY) || "";
+        sessionStorage.removeItem(SIGNIN_PROVIDER_KEY);
+        sessionStorage.removeItem(SIGNIN_RETURN_PATH_KEY);
+        if (!cancelled) {
+          signInWithRedirect({
+            provider: "Google",
+            customState: returnPath || undefined,
+          });
+        }
+      }
+    } catch {
+      /* storage blocked */
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     const unsubscribe = Hub.listen("auth", ({ payload }) => {
       const hubPayload = payload as Record<string, unknown>;
@@ -205,6 +240,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback((customState?: string) => {
+    // Cognito's hosted UI keeps its own session cookie at
+    // {domain}.auth.{region}.amazoncognito.com. Once a user has signed
+    // in once, a subsequent /oauth2/authorize silently issues a fresh
+    // code from that cookie WITHOUT redirecting to Google — which means
+    // the authorize_url `prompt=select_account` override on our Google
+    // IDP never actually fires. The result: user gets auto-signed-in
+    // as whatever Google account they last used, with no picker.
+    //
+    // Fix: explicitly hit Cognito's /logout endpoint first so the
+    // cookie is cleared, then re-trigger signInWithRedirect from the
+    // post-logout landing page. We stash the caller's customState in
+    // sessionStorage so it survives the logout round-trip.
+    try {
+      const cfg = Amplify.getConfig();
+      const oauthCfg = cfg?.Auth?.Cognito?.loginWith?.oauth;
+      const cognitoDomain = oauthCfg?.domain;
+      const clientId = cfg?.Auth?.Cognito?.userPoolClientId;
+      // logout_uri must EXACTLY match a registered logout URL — use
+      // origin + "/" (matches the entries in amplify/auth/resource.ts).
+      const logoutReturnUri = window.location.origin + "/";
+      if (cognitoDomain && clientId) {
+        sessionStorage.setItem(SIGNIN_PROVIDER_KEY, "Google");
+        sessionStorage.setItem(SIGNIN_RETURN_PATH_KEY, customState || "");
+        const logoutUrl =
+          `https://${cognitoDomain}/logout?client_id=${encodeURIComponent(clientId)}` +
+          `&logout_uri=${encodeURIComponent(logoutReturnUri)}`;
+        window.location.href = logoutUrl;
+        return;
+      }
+    } catch {
+      /* fall through to direct sign-in */
+    }
+    // Fallback for environments where config/storage isn't available:
+    // skip the logout step. Worst case, user sees the same silent-
+    // re-auth behavior this fix is meant to prevent.
     signInWithRedirect({ provider: "Google", customState });
   }, []);
 
