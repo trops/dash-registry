@@ -190,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         "[AuthContext:resume] checking sentinel, provider =",
         provider,
       );
-      if (provider === "Google") {
+      if (provider === "GoogleOIDC") {
         const returnPath =
           sessionStorage.getItem(SIGNIN_RETURN_PATH_KEY) || "";
         sessionStorage.removeItem(SIGNIN_PROVIDER_KEY);
@@ -200,8 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           returnPath,
         );
         if (!cancelled) {
+          // Cognito reserves "Google" for its native IDP type and rejects
+          // an OIDC IDP with that name — so our IDP is named "GoogleOIDC"
+          // and we reach it via Amplify's custom-provider escape hatch.
           signInWithRedirect({
-            provider: "Google",
+            provider: { custom: "GoogleOIDC" },
             customState: returnPath || undefined,
           });
         }
@@ -261,7 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logoutReturnUri,
       });
       if (cognitoDomain && clientId) {
-        sessionStorage.setItem(SIGNIN_PROVIDER_KEY, "Google");
+        sessionStorage.setItem(SIGNIN_PROVIDER_KEY, "GoogleOIDC");
         sessionStorage.setItem(SIGNIN_RETURN_PATH_KEY, customState || "");
         const logoutUrl =
           `https://${cognitoDomain}/logout?client_id=${encodeURIComponent(clientId)}` +
@@ -279,7 +282,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn("[signInWithGoogle] logout-first path threw:", e);
     }
-    signInWithRedirect({ provider: "Google", customState });
+    // Amplify's custom-provider form: our IDP is named "GoogleOIDC"
+    // because Cognito reserves "Google" for its native IDP type.
+    signInWithRedirect({
+      provider: { custom: "GoogleOIDC" },
+      customState,
+    });
   }, []);
 
   return (
