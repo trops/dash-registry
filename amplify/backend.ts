@@ -16,71 +16,85 @@ import { auth } from "./auth/resource.ts";
 import { storage } from "./storage/resource.ts";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CfnUserPoolIdentityProvider } from "aws-cdk-lib/aws-cognito";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { RemovalPolicy, SecretValue } from "aws-cdk-lib";
 
 const backend = defineBackend({
     auth,
     storage,
 });
 
-// Migrate the "Google" identity provider from Cognito's native-Google
-// type to an OIDC type.
+// Google identity provider — defined as a raw OIDC IDP here rather than
+// via Amplify's native `google` factory.
 //
-// Why: Cognito's native Google IDP silently drops
-// ProviderDetails.authorize_url on create/update (confirmed via AWS CLI
-// — query params are stripped). That means we can't get
-// ?prompt=select_account through to Google, and every sign-in reuses
-// Google's existing browser session (Google even reports prompt=none
-// in the callback). Users can never pick a different account.
+// Why not Amplify's factory: Cognito's native-Google IDP type silently
+// drops `authorize_request_extra_params` and `authorize_url` query
+// params (confirmed via AWS CLI). That means we can't pass
+// `prompt=select_account` through to Google, and every sign-in
+// silently reuses Google's browser session instead of showing the
+// account picker. Cognito's OIDC IDP type **does** honor those params.
 //
-// OIDC-type IDPs properly support `authorize_request_extra_params`,
-// which reliably threads our prompt value into the final Google URL.
+// Why as a fresh resource and not an in-place `addPropertyOverride`
+// on Amplify's IDP: changing ProviderType on a CFN resource requires
+// replacement (delete + create), and CFN refuses to replace a
+// custom-named resource in a single update. The previous IDP (logical
+// id `amplifyAuthGoogleIdPA9736819`) was deleted manually in AWS as a
+// one-time migration step; by declaring a new resource with a
+// different logical id here, CFN has no replacement to perform — it
+// just creates it fresh.
 //
-// We keep the ProviderName exactly "Google" so Cognito's federated
-// identity table (which keys off {providerName, providerUserId}) still
-// matches existing users on their next sign-in — no user-record or
-// user-data loss. Google's OIDC `sub` is identical to the value native
-// Google IDP stored.
-//
-// Using CDK escape hatch to rewrite the IDP CFN resource that the
-// `google` factory in auth/resource.ts produced.
-const googleIdp = backend.auth.stack.node
-    .findAll()
-    .find(
-        (c): c is CfnUserPoolIdentityProvider =>
-            c instanceof CfnUserPoolIdentityProvider &&
-            c.providerName === "Google",
-    );
-if (googleIdp) {
-    // Flip the provider type from "Google" → "OIDC". CFN replaces the
-    // resource on deploy, but since the ProviderName stays "Google" the
-    // federated-identity keys in Cognito remain valid.
-    googleIdp.addPropertyOverride("ProviderType", "OIDC");
+// The ProviderName stays exactly "Google" so Cognito's federated
+// identity records (keyed on `{providerName, providerUserId}`) still
+// match existing users. Google's OIDC `sub` is the same value native
+// Google IDP stored, so no user-record loss on first sign-in.
+const googleIdp = new CfnUserPoolIdentityProvider(
+    backend.auth.stack,
+    "GoogleOidcIdp",
+    {
+        userPoolId: backend.auth.resources.userPool.userPoolId,
+        providerName: "Google",
+        providerType: "OIDC",
+        // Secrets live in SSM (set by `ampx sandbox secret set GOOGLE_*`).
+        // `SecretValue.ssmSecure()` produces a dynamic reference that
+        // CloudFormation resolves at deploy time without materializing
+        // the value in the template.
+        providerDetails: {
+            client_id: SecretValue.ssmSecure(
+                "/amplify/dashregistry/johngiatropoulos-sandbox-e718e335ed/GOOGLE_CLIENT_ID",
+            ).unsafeUnwrap(),
+            client_secret: SecretValue.ssmSecure(
+                "/amplify/dashregistry/johngiatropoulos-sandbox-e718e335ed/GOOGLE_CLIENT_SECRET",
+            ).unsafeUnwrap(),
+            oidc_issuer: "https://accounts.google.com",
+            authorize_scopes: "openid email profile",
+            attributes_request_method: "GET",
+            // CFN requires a JSON-encoded string, not an object —
+            // passing {prompt: "select_account"} directly produces:
+            //   #/ProviderDetails/authorize_request_extra_params:
+            //     expected type: String, found: JSONObject
+            authorize_request_extra_params: JSON.stringify({
+                prompt: "select_account",
+            }),
+        },
+        attributeMapping: {
+            email: "email",
+            name: "name",
+            picture: "picture",
+            username: "sub",
+        },
+    },
+);
 
-    // Rebuild ProviderDetails for an OIDC IDP. Preserve client_id and
-    // client_secret — they're tokenized references to the Amplify
-    // secrets (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) set via
-    // `ampx sandbox secret`. We don't redefine them; CDK keeps the
-    // original token values. We add OIDC-standard params and the
-    // authorize_request_extra_params knob for prompt=select_account.
-    googleIdp.addPropertyOverride("ProviderDetails.oidc_issuer", "https://accounts.google.com");
-    googleIdp.addPropertyOverride("ProviderDetails.authorize_scopes", "openid email profile");
-    googleIdp.addPropertyOverride("ProviderDetails.attributes_request_method", "GET");
-    // Force Google's account picker so users can choose a different
-    // account on every sign-in instead of being silently returned as
-    // whichever Google account their browser session points at.
-    // CFN's UserPoolIdentityProvider.ProviderDetails is a string→string
-    // map (JSON passes through unchanged on describe responses for
-    // most fields), but `authorize_request_extra_params` specifically
-    // must be a **JSON-encoded string**, not an object. Passing an
-    // object here triggers:
-    //   #/ProviderDetails/authorize_request_extra_params:
-    //     expected type: String, found: JSONObject
-    googleIdp.addPropertyOverride(
-        "ProviderDetails.authorize_request_extra_params",
-        JSON.stringify({ prompt: "select_account" }),
-    );
-}
+// Amplify's factory no longer adds "Google" to the User Pool Client's
+// SupportedIdentityProviders list (since we removed `google` from
+// externalProviders in auth/resource.ts). Re-add it via CDK override
+// so Amplify's hosted UI will accept `identity_provider=Google` on
+// /oauth2/authorize and forward to our new OIDC IDP.
+const userPoolClient = backend.auth.resources.cfnResources.cfnUserPoolClient;
+userPoolClient.supportedIdentityProviders = ["COGNITO", "Google"];
+// Explicit dependency so the client update waits for the IDP to exist
+// — otherwise CFN may try to set SupportedIdentityProviders=["Google"]
+// before the IDP is created, failing with "Invalid IdP".
+userPoolClient.addDependency(googleIdp);
 
 // --- DynamoDB Tables (CDK escape hatch) ---
 

@@ -1,38 +1,23 @@
 /**
  * Amplify Auth — Cognito Configuration
  *
- * Configures user pools with email/password login and Google social sign-in.
- * Google OAuth credentials are stored as SSM secrets via `npx ampx sandbox secret set`.
+ * Email/password login only here. Google social sign-in is attached
+ * manually in `amplify/backend.ts` as a raw OIDC IDP so we can force
+ * `prompt=select_account` via `authorize_request_extra_params` — a
+ * capability Cognito's native Google IDP type does not support.
+ *
+ * Rationale: when this was an Amplify-managed native Google IDP, CFN
+ * refused the required type change in-place ("custom-named resource
+ * requires replacing"). Declaring it outside Amplify's factory gives it
+ * a fresh CFN logical ID and dodges that restriction entirely.
  */
-import { defineAuth, secret } from "@aws-amplify/backend";
+import { defineAuth } from "@aws-amplify/backend";
 
 export const auth = defineAuth({
   loginWith: {
     email: {
       verificationEmailStyle: "CODE",
       verificationEmailSubject: "Dash Registry - Verify your email",
-    },
-    externalProviders: {
-      google: {
-        clientId: secret("GOOGLE_CLIENT_ID"),
-        clientSecret: secret("GOOGLE_CLIENT_SECRET"),
-        scopes: ["EMAIL", "PROFILE"],
-        attributeMapping: {
-          email: "email",
-          fullname: "name",
-          profilePicture: "picture",
-        },
-      },
-      callbackUrls: [
-        "https://main.d919rwhuzp7rj.amplifyapp.com/",
-        "http://localhost:3000/",
-        "http://localhost:3001/",
-      ],
-      logoutUrls: [
-        "https://main.d919rwhuzp7rj.amplifyapp.com/",
-        "http://localhost:3000/",
-        "http://localhost:3001/",
-      ],
     },
   },
   userAttributes: {
