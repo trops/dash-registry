@@ -59,7 +59,15 @@ async function linkUser(googleSub, email) {
         );
         console.log(`  linked ${email} (sub ${googleSub})`);
     } catch (e) {
-        if (e.name === "ResourceConflictException") {
+        // Cognito returns either ResourceConflictException or
+        // InvalidParameterException("SourceUser is already linked...")
+        // depending on whether the destination already has *any* link
+        // to the source, or specifically this one — both mean "done".
+        const alreadyLinked =
+            e.name === "ResourceConflictException" ||
+            (e.name === "InvalidParameterException" &&
+                /already linked/i.test(e.message ?? ""));
+        if (alreadyLinked) {
             console.log(`  already linked ${email} (sub ${googleSub})`);
             return;
         }

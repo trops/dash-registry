@@ -75,12 +75,22 @@ const googleIdp = new CfnUserPoolIdentityProvider(
             //   - `authorize_request_extra_params` (SAML-only)
             //   - `authorize_url` with a query string ("OIDC endpoint
             //     can not contain queries")
-            // So we proxy the authorize hop through our app. Token
-            // exchange and userinfo stay between Cognito and Google
-            // directly via oidc_issuer auto-discovery — this endpoint
-            // only intercepts the outbound authorize redirect.
+            // So we proxy the authorize hop through our app.
+            //
+            // CRITICAL: Cognito only honors an explicit `authorize_url`
+            // when **all four** endpoint URLs are also explicit — set
+            // just `authorize_url` alone and Cognito silently discards
+            // it in favor of whatever it pulls from
+            // `<oidc_issuer>/.well-known/openid-configuration` at
+            // runtime. So we hardcode token_url / attributes_url /
+            // jwks_uri to Google's published endpoints too, which
+            // disables the auto-discovery path entirely.
             authorize_url:
                 "https://main.d919rwhuzp7rj.amplifyapp.com/api/oauth/google",
+            token_url: "https://oauth2.googleapis.com/token",
+            attributes_url:
+                "https://openidconnect.googleapis.com/v1/userinfo",
+            jwks_uri: "https://www.googleapis.com/oauth2/v3/certs",
         },
         attributeMapping: {
             email: "email",
