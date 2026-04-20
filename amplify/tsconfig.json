@@ -4,6 +4,14 @@
         "module": "es2022",
         "moduleResolution": "bundler",
         "strict": true,
+        // Node 22.6+ (including Node 24) loads .ts files natively via
+        // --experimental-strip-types. That loader does NOT probe file
+        // extensions — relative imports must be written with a literal
+        // `.ts` suffix. `allowImportingTsExtensions` tells TypeScript
+        // it's okay to write them that way; `noEmit` is required when
+        // the option is enabled (tsc never emits .js for these).
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
         "paths": {
             "$amplify/*": ["../.amplify/generated/*"]
         }
