@@ -6,8 +6,12 @@
  * composite sort keys are incompatible with the raw SDK calls in db.ts.
  */
 import { defineBackend } from "@aws-amplify/backend";
-import { auth } from "./auth/resource";
-import { storage } from "./storage/resource";
+// Use explicit .js extensions on relative imports so Node's ESM loader
+// (used during CDK assembly after TypeScript synth) can resolve them —
+// the `bundler` moduleResolution in tsconfig accepts both forms, but
+// Node's ESM at runtime requires the extension.
+import { auth } from "./auth/resource.js";
+import { storage } from "./storage/resource.js";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { CfnUserPoolIdentityProvider } from "aws-cdk-lib/aws-cognito";
 import { RemovalPolicy } from "aws-cdk-lib";
