@@ -17,13 +17,27 @@ const backend = defineBackend({
     storage,
 });
 
-// Force Google to show the account picker on every sign-in instead of
-// silently using the browser's default Google session. Cognito's native
-// Google IDP doesn't expose an authorize-params knob, so we reach down
-// via CDK escape hatch and override the underlying CFN resource's
-// providerDetails.authorize_url to include ?prompt=select_account.
-// Cognito appends its standard OAuth params with `&` so this cleanly
-// threads through to Google.
+// Migrate the "Google" identity provider from Cognito's native-Google
+// type to an OIDC type.
+//
+// Why: Cognito's native Google IDP silently drops
+// ProviderDetails.authorize_url on create/update (confirmed via AWS CLI
+// — query params are stripped). That means we can't get
+// ?prompt=select_account through to Google, and every sign-in reuses
+// Google's existing browser session (Google even reports prompt=none
+// in the callback). Users can never pick a different account.
+//
+// OIDC-type IDPs properly support `authorize_request_extra_params`,
+// which reliably threads our prompt value into the final Google URL.
+//
+// We keep the ProviderName exactly "Google" so Cognito's federated
+// identity table (which keys off {providerName, providerUserId}) still
+// matches existing users on their next sign-in — no user-record or
+// user-data loss. Google's OIDC `sub` is identical to the value native
+// Google IDP stored.
+//
+// Using CDK escape hatch to rewrite the IDP CFN resource that the
+// `google` factory in auth/resource.ts produced.
 const googleIdp = backend.auth.stack.node
     .findAll()
     .find(
@@ -32,9 +46,26 @@ const googleIdp = backend.auth.stack.node
             c.providerName === "Google",
     );
 if (googleIdp) {
+    // Flip the provider type from "Google" → "OIDC". CFN replaces the
+    // resource on deploy, but since the ProviderName stays "Google" the
+    // federated-identity keys in Cognito remain valid.
+    googleIdp.addPropertyOverride("ProviderType", "OIDC");
+
+    // Rebuild ProviderDetails for an OIDC IDP. Preserve client_id and
+    // client_secret — they're tokenized references to the Amplify
+    // secrets (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET) set via
+    // `ampx sandbox secret`. We don't redefine them; CDK keeps the
+    // original token values. We add OIDC-standard params and the
+    // authorize_request_extra_params knob for prompt=select_account.
+    googleIdp.addPropertyOverride("ProviderDetails.oidc_issuer", "https://accounts.google.com");
+    googleIdp.addPropertyOverride("ProviderDetails.authorize_scopes", "openid email profile");
+    googleIdp.addPropertyOverride("ProviderDetails.attributes_request_method", "GET");
+    // Force Google's account picker so users can choose a different
+    // account on every sign-in instead of being silently returned as
+    // whichever Google account their browser session points at.
     googleIdp.addPropertyOverride(
-        "ProviderDetails.authorize_url",
-        "https://accounts.google.com/o/oauth2/v2/auth?prompt=select_account",
+        "ProviderDetails.authorize_request_extra_params",
+        { prompt: "select_account" },
     );
 }
 
