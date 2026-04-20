@@ -102,7 +102,15 @@ function GoogleIcon() {
 
 type AuthorizeStatus = "idle" | "loading" | "success" | "error";
 
-function DeviceForm({ prefilled }: { prefilled: string }) {
+function DeviceForm({
+    prefilled,
+    currentEmail,
+    onSwitchAccount,
+}: {
+    prefilled: string;
+    currentEmail: string | null;
+    onSwitchAccount: () => void;
+}) {
     const [code, setCode] = useState(prefilled);
     const [status, setStatus] = useState<AuthorizeStatus>("idle");
     const [errorMessage, setErrorMessage] = useState("");
@@ -162,6 +170,29 @@ function DeviceForm({ prefilled }: { prefilled: string }) {
 
     return (
         <div className="space-y-4">
+            {/* Current-account banner with a way to switch. Users arriving
+                from the Dash app often have a lingering Cognito session
+                and would otherwise authorize the device against whatever
+                account they last used — with no way to use a different
+                one. */}
+            <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-dash-bg border border-dash-border">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase tracking-wide text-dash-muted">
+                        Signed in as
+                    </p>
+                    <p className="text-sm text-white truncate">
+                        {currentEmail || "Authenticated user"}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={onSwitchAccount}
+                    className="shrink-0 text-xs text-dash-muted hover:text-white underline"
+                >
+                    Use a different account
+                </button>
+            </div>
+
             <div>
                 <label
                     htmlFor="device-code"
@@ -210,11 +241,18 @@ export default function DevicePageContent({
 }: {
     prefilled?: string;
 }) {
-    const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
+    const { isAuthenticated, isLoading, signInWithGoogle, profile } = useAuth();
 
     function handleGoogleSignIn() {
         const returnPath = prefilled ? `/device/${prefilled}` : "/device";
         signInWithGoogle(returnPath);
+    }
+
+    // "Use a different account" — reruns the sign-in flow. signInWithGoogle
+    // already hits Cognito's /logout before re-authorizing, so the account
+    // picker will show without us having to explicitly sign out first.
+    function handleSwitchAccount() {
+        handleGoogleSignIn();
     }
 
     return (
@@ -235,7 +273,13 @@ export default function DevicePageContent({
                         Checking authentication...
                     </div>
                 ) : isAuthenticated ? (
-                    <DeviceForm prefilled={prefilled} />
+                    <DeviceForm
+                        prefilled={prefilled}
+                        currentEmail={
+                            profile?.email || profile?.displayName || null
+                        }
+                        onSwitchAccount={handleSwitchAccount}
+                    />
                 ) : (
                     <div className="space-y-4">
                         {prefilled && (
