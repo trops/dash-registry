@@ -24,9 +24,7 @@
       "require_uppercase": true
     },
     "oauth": {
-      "identity_providers": [
-        "GOOGLE"
-      ],
+      "identity_providers": [],
       "redirect_sign_in_uri": [
         "https://main.d919rwhuzp7rj.amplifyapp.com/",
         "http://localhost:3000/",
@@ -39,13 +37,13 @@
       ],
       "response_type": "code",
       "scopes": [
+        "profile",
         "phone",
         "email",
         "openid",
-        "profile",
         "aws.cognito.signin.user.admin"
       ],
-      "domain": "d6069e4afd3a4d6d6558.auth.us-east-1.amazoncognito.com"
+      "domain": ""
     },
     "unauthenticated_identities_enabled": true
   },

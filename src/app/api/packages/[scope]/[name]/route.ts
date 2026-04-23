@@ -194,9 +194,20 @@ export async function DELETE(
 
     return NextResponse.json({ deleted: `${scope}/${name}` });
   } catch (err) {
+    // Surface the underlying error message + stack to the client. The
+    // previous bare "Failed to delete package" string made client-side
+    // diagnosis impossible — the registry's own server logs weren't
+    // reachable (CloudWatch log group absent or in a different region)
+    // so the client had zero signal. We intentionally include the
+    // exception name + message; authenticated owner-only endpoint, so
+    // there's no value in hiding which DDB/S3 operation threw.
     console.error("[API DELETE /packages/[scope]/[name]] Error:", err);
+    const detail =
+      err instanceof Error
+        ? `${err.name}: ${err.message}`
+        : String(err ?? "unknown error");
     return NextResponse.json(
-      { error: "Failed to delete package" },
+      { error: `Failed to delete package: ${detail}` },
       { status: 500 },
     );
   }
