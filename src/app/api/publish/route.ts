@@ -19,6 +19,24 @@ import {
 import { uploadPackageZip, buildS3Key } from "@/lib/s3";
 import { validateManifest } from "@/lib/validate";
 import { buildEntitlement } from "@/lib/entitlement";
+import {
+    verifyPublisherCert,
+    verifyZipSignature,
+    type PublisherCert,
+} from "@/lib/crypto";
+import { getPublisherKey } from "@/lib/publisherKeys";
+import { getRegistryRootPublicKey } from "@/lib/registryRootKey";
+
+// Crypto + DynamoDB + SSM all require the Node runtime.
+export const runtime = "nodejs";
+
+// When true, publishes without a valid signature + cert are rejected.
+// Phase 1A ships with this OFF so the dash-electron publisher side can
+// migrate over without an outage; flip to "true" once the consumer-side
+// signing is rolled out (Phase 1B). Behavior when present-but-invalid is
+// ALWAYS strict — bad signatures are rejected regardless of this flag.
+const REQUIRE_SIGNED_PUBLISH =
+    process.env.DASH_REGISTRY_REQUIRE_SIGNED_PUBLISH === "true";
 
 export async function POST(request: NextRequest) {
     // 1. Authenticate
@@ -46,6 +64,17 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
         const file = formData.get("file") as File | null;
         const manifestJson = formData.get("manifest") as string | null;
+        // Phase 1A signing fields (all optional during the rollout
+        // window; see REQUIRE_SIGNED_PUBLISH).
+        const zipSignatureRaw = formData.get("signature");
+        const publisherCertRaw = formData.get("publisherCert");
+        const publisherKeyIdRaw = formData.get("publisherKeyId");
+        const zipSignature =
+            typeof zipSignatureRaw === "string" ? zipSignatureRaw : null;
+        const publisherCertJson =
+            typeof publisherCertRaw === "string" ? publisherCertRaw : null;
+        const publisherKeyId =
+            typeof publisherKeyIdRaw === "string" ? publisherKeyIdRaw : null;
 
         if (!file) {
             return NextResponse.json(
@@ -105,8 +134,116 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // 7. Upload ZIP to S3
+        // 7. Verify signature + publisher cert (Phase 1A).
+        //    If REQUIRE_SIGNED_PUBLISH is false, signatures are optional
+        //    but verified when present. If true, they're required.
         const zipBuffer = Buffer.from(await file.arrayBuffer());
+        const haveSigningFields = Boolean(
+            zipSignature && publisherCertJson && publisherKeyId,
+        );
+        let verifiedFingerprint: string | null = null;
+        let verifiedCert: PublisherCert | null = null;
+
+        if (REQUIRE_SIGNED_PUBLISH && !haveSigningFields) {
+            return NextResponse.json(
+                {
+                    error:
+                        "This registry requires signed publishes. " +
+                        "Provide `signature`, `publisherCert`, and `publisherKeyId` form fields.",
+                },
+                { status: 400 },
+            );
+        }
+
+        if (haveSigningFields) {
+            let parsedCert: PublisherCert;
+            try {
+                parsedCert = JSON.parse(publisherCertJson as string);
+            } catch {
+                return NextResponse.json(
+                    { error: "publisherCert must be valid JSON" },
+                    { status: 400 },
+                );
+            }
+
+            // (a) cert chains to the registry root key
+            const rootPublicKey = await getRegistryRootPublicKey();
+            try {
+                await verifyPublisherCert({
+                    cert: parsedCert,
+                    registryRootPublicKey: rootPublicKey,
+                });
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : "Invalid cert";
+                return NextResponse.json(
+                    { error: `Publisher cert rejected: ${msg}` },
+                    { status: 400 },
+                );
+            }
+
+            // (b) cert's publisher_id matches the authenticated user
+            if (parsedCert.body.publisher_id !== token.sub) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "Publisher cert's publisher_id does not match the authenticated user.",
+                    },
+                    { status: 403 },
+                );
+            }
+
+            // (c) the key referenced exists in the publisher_keys table
+            //     and is not revoked
+            const keyRow = await getPublisherKey(
+                token.sub,
+                publisherKeyId as string,
+            );
+            if (!keyRow) {
+                return NextResponse.json(
+                    {
+                        error: "publisherKeyId is not a registered key for your account.",
+                    },
+                    { status: 400 },
+                );
+            }
+            if (keyRow.revokedAt) {
+                return NextResponse.json(
+                    {
+                        error: `Signing key has been revoked at ${keyRow.revokedAt}.`,
+                    },
+                    { status: 400 },
+                );
+            }
+            if (keyRow.publicKey !== parsedCert.body.public_key) {
+                return NextResponse.json(
+                    {
+                        error: "Publisher cert's public key does not match the registered key.",
+                    },
+                    { status: 400 },
+                );
+            }
+
+            // (d) ZIP signature verifies against the publisher's
+            //     public key from the cert
+            const sigOk = await verifyZipSignature({
+                zipBytes: new Uint8Array(zipBuffer),
+                signature: zipSignature as string,
+                publisherPublicKey: parsedCert.body.public_key,
+            });
+            if (!sigOk) {
+                return NextResponse.json(
+                    {
+                        error: "ZIP signature does not verify against the publisher's key.",
+                    },
+                    { status: 400 },
+                );
+            }
+
+            verifiedFingerprint = parsedCert.body.fingerprint;
+            verifiedCert = parsedCert;
+        }
+
+        // 7b. Upload ZIP to S3
         const s3Key = await uploadPackageZip(
             scope,
             manifest.name,
@@ -177,6 +314,14 @@ export async function POST(request: NextRequest) {
         versionRecord.appOrigin = manifest.appOrigin;
         if (manifest.theme) {
             versionRecord.theme = manifest.theme;
+        }
+        // Phase 1A signing metadata — present only when the publisher
+        // supplied (and the registry verified) a signature.
+        if (haveSigningFields && verifiedCert) {
+            versionRecord.zipSignature = zipSignature;
+            versionRecord.publisherCert = verifiedCert;
+            versionRecord.publisherKeyId = publisherKeyId;
+            versionRecord.publisherFingerprint = verifiedFingerprint;
         }
         await putPackageVersion(versionRecord);
 

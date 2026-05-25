@@ -1,6 +1,6 @@
 {
     "name": "dash-registry",
-    "version": "1.5.26",
+    "version": "1.5.27",
     "private": true,
     "description": "Package registry and marketplace for Dash",
     "scripts": {
@@ -26,8 +26,11 @@
         "@aws-sdk/client-cognito-identity-provider": "^3.1004.0",
         "@aws-sdk/client-dynamodb": "^3.1004.0",
         "@aws-sdk/client-s3": "^3.1004.0",
+        "@aws-sdk/client-ssm": "^3.1053.0",
         "@aws-sdk/lib-dynamodb": "^3.1004.0",
         "@aws-sdk/s3-request-presigner": "^3.1004.0",
+        "@noble/ed25519": "^3.1.0",
+        "@noble/hashes": "^2.2.0",
         "aws-amplify": "^6.16.2",
         "aws-jwt-verify": "^4.0.1",
         "fuse.js": "^7.0.0",

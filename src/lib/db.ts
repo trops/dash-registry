@@ -63,6 +63,10 @@ export const TABLES = {
     process.env.INSTALL_LOG_TABLE ||
     custom?.installLogTable ||
     "dash-registry-InstallLog",
+  PUBLISHER_KEYS:
+    process.env.PUBLISHER_KEYS_TABLE ||
+    custom?.publisherKeysTable ||
+    "dash-registry-PublisherKeys",
 };
 
 // --- User operations ---
@@ -343,6 +347,25 @@ export async function putPackageVersion(version: Record<string, unknown>) {
       Item: { ...version, sk, createdAt: now },
     }),
   );
+}
+
+/**
+ * Single-version lookup. Returns null if the version doesn't exist.
+ * Used by the download route to surface signing metadata (signature,
+ * publisher cert, key id, fingerprint) alongside the pre-signed URL.
+ */
+export async function getPackageVersion(
+  scope: string,
+  name: string,
+  version: string,
+): Promise<Record<string, unknown> | null> {
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: TABLES.PACKAGE_VERSIONS,
+      Key: { packageScope: scope, sk: `${name}#${version}` },
+    }),
+  );
+  return result.Item ?? null;
 }
 
 export async function getPackageVersions(scope: string, name: string) {
