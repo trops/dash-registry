@@ -12,7 +12,12 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { getPackage, getUserByCognitoId, putUserLibraryEntry } from "@/lib/db";
+import {
+    getPackage,
+    getPackageVersion,
+    getUserByCognitoId,
+    putUserLibraryEntry,
+} from "@/lib/db";
 import { getDownloadUrl, getPrivatePackageSignedUrl } from "@/lib/s3";
 import { checkEntitlement } from "@/lib/entitlement";
 import {
@@ -21,6 +26,8 @@ import {
     hashIp,
 } from "@/lib/installLog";
 import { isPrivatePackagesEnabled } from "@/lib/featureFlags";
+
+export const runtime = "nodejs";
 
 export async function GET(
     request: NextRequest,
@@ -131,10 +138,37 @@ export async function GET(
             source: "registry",
         });
 
+        // 8. Look up signing metadata for this version (Phase 1A).
+        //    Optional — older versions published before signing
+        //    rolled out won't have these fields. Installers treat
+        //    missing fields per their policy (Phase 1C will refuse
+        //    to mount unsigned downloads once enforcement flips on).
+        const versionRecord = await getPackageVersion(scope, name, version);
+        const signing = versionRecord
+            ? {
+                  zipSignature:
+                      (versionRecord.zipSignature as string | undefined) ?? null,
+                  publisherCert:
+                      (versionRecord.publisherCert as object | undefined) ?? null,
+                  publisherKeyId:
+                      (versionRecord.publisherKeyId as string | undefined) ?? null,
+                  publisherFingerprint:
+                      (versionRecord.publisherFingerprint as
+                          | string
+                          | undefined) ?? null,
+              }
+            : {
+                  zipSignature: null,
+                  publisherCert: null,
+                  publisherKeyId: null,
+                  publisherFingerprint: null,
+              };
+
         return NextResponse.json({
             downloadUrl,
             version,
             packageId: `${scope}/${name}`,
+            ...signing,
         });
     } catch (err) {
         console.error("[API /download] Error:", err);

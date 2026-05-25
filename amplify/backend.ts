@@ -281,6 +281,26 @@ const installLogTable = new dynamodb.Table(dataStack, "InstallLogTable", {
     removalPolicy: RemovalPolicy.DESTROY,
 });
 
+// PublisherKeys table — PK: publisherId, SK: keyId
+// One row per (publisher, machine) signing key. The same publisher may
+// publish from multiple machines; each machine generates its own keypair
+// and registers it via POST /api/publishers/keys/issue-cert. Revocation
+// is per-key (leaked laptop = revoke just that key).
+// GSI "ByFingerprint": revocation lookup at install time — installers
+// query "is this fingerprint revoked?" before mounting a downloaded ZIP.
+const publisherKeysTable = new dynamodb.Table(dataStack, "PublisherKeysTable", {
+    tableName: "dash-registry-PublisherKeys",
+    partitionKey: { name: "publisherId", type: dynamodb.AttributeType.STRING },
+    sortKey: { name: "keyId", type: dynamodb.AttributeType.STRING },
+    billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    removalPolicy: RemovalPolicy.DESTROY,
+});
+
+publisherKeysTable.addGlobalSecondaryIndex({
+    indexName: "ByFingerprint",
+    partitionKey: { name: "fingerprint", type: dynamodb.AttributeType.STRING },
+});
+
 // --- Outputs ---
 
 backend.addOutput({
@@ -295,5 +315,6 @@ backend.addOutput({
         orgDomainsTable: orgDomainsTable.tableName,
         entitlementsTable: entitlementsTable.tableName,
         installLogTable: installLogTable.tableName,
+        publisherKeysTable: publisherKeysTable.tableName,
     },
 });
