@@ -26,6 +26,11 @@ import {
     hashIp,
 } from "@/lib/installLog";
 import { isPrivatePackagesEnabled } from "@/lib/featureFlags";
+import {
+    signManifestBody,
+    CURRENT_MANIFEST_SIGNATURE_KEYID,
+} from "@/lib/crypto";
+import { getRegistryRootKeys } from "@/lib/registryRootKey";
 
 export const runtime = "nodejs";
 
@@ -164,11 +169,42 @@ export async function GET(
                   publisherFingerprint: null,
               };
 
-        return NextResponse.json({
+        // Phase 5D (P1 #24): sign the response body with the
+        // registry root key so a MITM that swaps any field (downloadUrl,
+        // publisherCert, zipSignature, …) gets caught client-side
+        // before install. Signature is computed over the canonical
+        // JSON of `body` minus the two signature fields themselves.
+        const body: Record<string, unknown> = {
             downloadUrl,
             version,
             packageId: `${scope}/${name}`,
             ...signing,
+        };
+        let manifest_signature: string | null = null;
+        try {
+            const { privateKey } = await getRegistryRootKeys();
+            manifest_signature = await signManifestBody({
+                body,
+                registryRootPrivateKey: privateKey,
+            });
+        } catch (signErr) {
+            // Signing failure is logged; we still return the body so
+            // existing clients (which don't yet enforce manifest
+            // signing) keep working. Clients in strict mode will
+            // refuse this response — the right outcome when the
+            // registry can't reach its key material.
+            console.error(
+                "[API /download] Manifest signing failed:",
+                signErr,
+            );
+        }
+
+        return NextResponse.json({
+            ...body,
+            manifest_signature,
+            manifest_signature_keyid: manifest_signature
+                ? CURRENT_MANIFEST_SIGNATURE_KEYID
+                : null,
         });
     } catch (err) {
         console.error("[API /download] Error:", err);

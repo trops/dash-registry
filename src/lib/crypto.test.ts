@@ -6,6 +6,9 @@ import {
     signPublisherCert,
     verifyPublisherCert,
     verifyZipSignature,
+    signManifestBody,
+    verifyManifestSignature,
+    CURRENT_MANIFEST_SIGNATURE_KEYID,
     _internal,
 } from "./crypto";
 import * as ed from "@noble/ed25519";
@@ -172,5 +175,116 @@ describe("verifyZipSignature", () => {
             publisherPublicKey: publisher.publicKey,
         });
         expect(ok).toBe(false);
+    });
+});
+
+describe("signManifestBody / verifyManifestSignature (Phase 5D)", () => {
+    it("round-trips a download response body", async () => {
+        const root = await generateKeypair();
+        const body = {
+            downloadUrl: "https://s3.example/widget-v1.zip",
+            version: "1.0.0",
+            packageId: "@ai-built/foo",
+            zipSignature: "sig-abc",
+            publisherCert: { body: {}, sig: "x" },
+            publisherKeyId: "key-1",
+            publisherFingerprint: "fp",
+        };
+        const signature = await signManifestBody({
+            body,
+            registryRootPrivateKey: root.privateKey,
+        });
+        const ok = await verifyManifestSignature({
+            body,
+            signature,
+            registryRootPublicKey: root.publicKey,
+        });
+        expect(ok).toBe(true);
+    });
+
+    it("rejects a tampered downloadUrl", async () => {
+        const root = await generateKeypair();
+        const body = {
+            downloadUrl: "https://s3.example/widget-v1.zip",
+            version: "1.0.0",
+            packageId: "@ai-built/foo",
+        };
+        const signature = await signManifestBody({
+            body,
+            registryRootPrivateKey: root.privateKey,
+        });
+        const tampered = { ...body, downloadUrl: "https://evil/malware.zip" };
+        const ok = await verifyManifestSignature({
+            body: tampered,
+            signature,
+            registryRootPublicKey: root.publicKey,
+        });
+        expect(ok).toBe(false);
+    });
+
+    it("rejects a tampered nested cert field", async () => {
+        const root = await generateKeypair();
+        const body = {
+            downloadUrl: "https://s3.example/widget-v1.zip",
+            version: "1.0.0",
+            publisherCert: { body: { fingerprint: "real" }, sig: "rs" },
+        };
+        const signature = await signManifestBody({
+            body,
+            registryRootPrivateKey: root.privateKey,
+        });
+        const tampered = {
+            ...body,
+            publisherCert: { body: { fingerprint: "fake" }, sig: "rs" },
+        };
+        const ok = await verifyManifestSignature({
+            body: tampered,
+            signature,
+            registryRootPublicKey: root.publicKey,
+        });
+        expect(ok).toBe(false);
+    });
+
+    it("rejects a signature from a different root key", async () => {
+        const rootA = await generateKeypair();
+        const rootB = await generateKeypair();
+        const body = { downloadUrl: "https://example/x.zip", version: "1.0.0" };
+        const signature = await signManifestBody({
+            body,
+            registryRootPrivateKey: rootA.privateKey,
+        });
+        const ok = await verifyManifestSignature({
+            body,
+            signature,
+            registryRootPublicKey: rootB.publicKey,
+        });
+        expect(ok).toBe(false);
+    });
+
+    it("ignores existing manifest_signature fields when canonicalizing", async () => {
+        // The body the caller passes might still carry the signature
+        // fields from a previous round-trip — canonicalization must
+        // strip them so the same input produces the same signature.
+        const root = await generateKeypair();
+        const body = { downloadUrl: "https://example/x.zip", version: "1.0.0" };
+        const sig = await signManifestBody({
+            body,
+            registryRootPrivateKey: root.privateKey,
+        });
+        // Re-attach + re-sign; the result must match the original.
+        const bodyWithSig = {
+            ...body,
+            manifest_signature: sig,
+            manifest_signature_keyid: "v1",
+        };
+        const sigAgain = await signManifestBody({
+            body: bodyWithSig,
+            registryRootPrivateKey: root.privateKey,
+        });
+        expect(sigAgain).toBe(sig);
+    });
+
+    it("exports a versioned keyid identifier", () => {
+        expect(CURRENT_MANIFEST_SIGNATURE_KEYID).toBe("v1");
     });
 });
