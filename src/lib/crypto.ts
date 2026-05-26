@@ -169,6 +169,73 @@ export async function verifyPublisherCert(args: {
     return cert.body;
 }
 
+// --- Manifest body signature (Phase 5D, audit P1 #24) ---
+//
+// Defense against a MITM that swaps a /download response between the
+// registry and the installer client. We sign the entire JSON response
+// body — excluding the two signature fields themselves — with the
+// registry root key. The client verifies before consuming the
+// downloadUrl / zipSignature / publisherCert from the same response.
+//
+// `manifest_signature_keyid` identifies which root key signed. Today
+// only `"v1"` is in use; future rotation ships a new dash-electron
+// release that bundles both v1 + v2 public keys, registry flips to
+// signing with v2 keyid, then drops v1 after a deprecation window.
+//
+// The body shape is canonicalized (sorted keys, no whitespace) before
+// signing so server + client compute byte-identical inputs. NEVER
+// sign over an unspecified-ordering JSON.stringify().
+
+export const CURRENT_MANIFEST_SIGNATURE_KEYID = "v1";
+
+/**
+ * Strip the signature fields and canonicalize the remainder. Same
+ * input shape on both sides → byte-identical canonical bytes →
+ * signatures match.
+ */
+function canonicalizeManifestBody(body: Record<string, unknown>): string {
+    const stripped: Record<string, unknown> = { ...body };
+    delete stripped.manifest_signature;
+    delete stripped.manifest_signature_keyid;
+    return canonicalJsonStringify(stripped);
+}
+
+/**
+ * Sign a response body with the registry root private key.
+ * Returns the base64 Ed25519 signature; caller attaches it as
+ * `manifest_signature` (and supplies `manifest_signature_keyid`) on
+ * the response.
+ */
+export async function signManifestBody(args: {
+    body: Record<string, unknown>;
+    registryRootPrivateKey: string; // base64
+}): Promise<string> {
+    const message = new TextEncoder().encode(
+        canonicalizeManifestBody(args.body)
+    );
+    const privateBytes = base64ToBytes(args.registryRootPrivateKey);
+    const sigBytes = await ed.signAsync(message, privateBytes);
+    return bytesToBase64(sigBytes);
+}
+
+/**
+ * Verify a manifest signature against the registry root public key.
+ * Throws on bad/missing signature. Used by tests and any defense-in-
+ * depth server-side self-check.
+ */
+export async function verifyManifestSignature(args: {
+    body: Record<string, unknown>;
+    signature: string; // base64
+    registryRootPublicKey: string; // base64
+}): Promise<boolean> {
+    const message = new TextEncoder().encode(
+        canonicalizeManifestBody(args.body)
+    );
+    const sigBytes = base64ToBytes(args.signature);
+    const rootPubBytes = base64ToBytes(args.registryRootPublicKey);
+    return ed.verifyAsync(sigBytes, message, rootPubBytes);
+}
+
 // --- ZIP signature verification ---
 
 /**
