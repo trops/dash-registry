@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { userCode } = body;
+        const { userCode, refreshToken, cognitoClientId } = body;
 
         if (!userCode || typeof userCode !== "string") {
             return NextResponse.json(
@@ -33,11 +33,23 @@ export async function POST(request: NextRequest) {
         // Extract the raw JWT to pass through to the Dash app
         const rawJwt = request.headers.get("Authorization")!.slice(7);
 
-        // Authorize the device code with the real Cognito token
+        // Authorize the device code with the real Cognito token. The browser
+        // also forwards its Cognito refresh token (+ the client id it belongs
+        // to) when available so the desktop app can refresh its access token
+        // directly against Cognito instead of breaking after ~1h. Both are
+        // optional strings — anything non-string is dropped.
         const authorized = await authorizeDeviceCode(
             userCode.trim().toUpperCase(),
             rawJwt,
             token.sub,
+            {
+                refreshToken:
+                    typeof refreshToken === "string" ? refreshToken : undefined,
+                cognitoClientId:
+                    typeof cognitoClientId === "string"
+                        ? cognitoClientId
+                        : undefined,
+            },
         );
 
         if (!authorized) {

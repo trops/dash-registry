@@ -10,10 +10,42 @@
  * - Rendering the device authorization form when authenticated
  */
 import { useState } from "react";
+import { Amplify } from "aws-amplify";
 import { Authenticator, ThemeProvider } from "@aws-amplify/ui-react";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { useAuth } from "@/components/AuthContext";
 import AuthSync from "@/components/AuthSync";
+
+/**
+ * Read the Cognito refresh token (+ the client id it belongs to) from
+ * Amplify's browser storage so we can forward them to the device-authorize
+ * endpoint. Amplify v6's `fetchAuthSession()` deliberately does NOT expose
+ * the refresh token, so we read it from the well-known Cognito storage keys:
+ *   CognitoIdentityServiceProvider.<clientId>.LastAuthUser
+ *   CognitoIdentityServiceProvider.<clientId>.<username>.refreshToken
+ * This key format has been stable across Amplify v5→v6. If it ever changes,
+ * the refresh token is simply absent and the desktop app falls back to
+ * re-authenticating on expiry (today's behavior) — never a hard failure.
+ */
+function readCognitoRefresh(): {
+    refreshToken?: string;
+    cognitoClientId?: string;
+} {
+    try {
+        const clientId = Amplify.getConfig().Auth?.Cognito?.userPoolClientId;
+        if (!clientId) return {};
+        const prefix = `CognitoIdentityServiceProvider.${clientId}`;
+        const lastUser = window.localStorage.getItem(`${prefix}.LastAuthUser`);
+        if (!lastUser) return { cognitoClientId: clientId };
+        const refreshToken =
+            window.localStorage.getItem(
+                `${prefix}.${lastUser}.refreshToken`,
+            ) || undefined;
+        return { refreshToken, cognitoClientId: clientId };
+    } catch {
+        return {};
+    }
+}
 
 const amplifyDarkTheme = {
     name: "dash-dark-device",
@@ -128,13 +160,22 @@ function DeviceForm({
                 throw new Error("Could not retrieve access token");
             }
 
+            // Forward the Cognito refresh token (when available) so the
+            // desktop app can keep its session alive past the ~1h access-token
+            // expiry instead of silently failing every registry call.
+            const { refreshToken, cognitoClientId } = readCognitoRefresh();
+
             const res = await fetch("/api/auth/device/authorize", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify({ userCode: code.trim().toUpperCase() }),
+                body: JSON.stringify({
+                    userCode: code.trim().toUpperCase(),
+                    refreshToken,
+                    cognitoClientId,
+                }),
             });
 
             if (!res.ok) {
