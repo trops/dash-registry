@@ -11,6 +11,9 @@ set -euo pipefail
 #   ./scripts/ci.sh --push -m "message"       # above + push
 #   ./scripts/ci.sh --pr -m "message"         # above + create PR
 #   ./scripts/ci.sh --release -m "message"    # above + merge + tag + cleanup
+#
+# The version bump is patch by default; set BUMP=minor (or major) for a
+# new feature or a breaking change, e.g. BUMP=minor npm run ci:pr -- -m "…"
 # ============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -128,7 +131,12 @@ if [[ -n "$REBASE_TARGET" ]]; then
 fi
 
 step "Bumping version"
-npm version patch --no-git-tag-version
+BUMP="${BUMP:-patch}"
+case "$BUMP" in
+    patch|minor|major) ;;
+    *) echo "Error: BUMP must be patch, minor or major (got \"$BUMP\")"; exit 1 ;;
+esac
+npm version "$BUMP" --no-git-tag-version
 VERSION="$(node -p "require('./package.json').version")"
 git add package.json package-lock.json
 git commit -m "Bump version to $VERSION"
