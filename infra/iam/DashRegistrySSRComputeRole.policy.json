@@ -13,28 +13,28 @@
                 "dynamodb:Scan"
             ],
             "Resource": [
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Users",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Users/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Packages",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Packages/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-PackageVersions",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-PackageVersions/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-UserLibrary",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-UserLibrary/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-DeviceCodes",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-DeviceCodes/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Orgs",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Orgs/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-OrgMemberships",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-OrgMemberships/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-OrgDomains",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-OrgDomains/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Entitlements",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-Entitlements/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-InstallLog",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-InstallLog/index/*",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-PublisherKeys",
-                "arn:aws:dynamodb:us-east-1:286802273987:table/dash-registry-PublisherKeys/index/*"
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Users",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Users/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Packages",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Packages/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-PackageVersions",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-PackageVersions/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-UserLibrary",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-UserLibrary/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-DeviceCodes",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-DeviceCodes/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Orgs",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Orgs/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-OrgMemberships",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-OrgMemberships/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-OrgDomains",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-OrgDomains/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Entitlements",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-Entitlements/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-InstallLog",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-InstallLog/index/*",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-PublisherKeys",
+                "arn:aws:dynamodb:us-east-1:${AWS_ACCOUNT_ID}:table/dash-registry-PublisherKeys/index/*"
             ]
         },
         {
@@ -50,7 +50,7 @@
             "Sid": "CognitoAdminGetUser",
             "Effect": "Allow",
             "Action": ["cognito-idp:AdminGetUser"],
-            "Resource": "arn:aws:cognito-idp:us-east-1:286802273987:userpool/us-east-1_oIS59FIu7"
+            "Resource": "arn:aws:cognito-idp:us-east-1:${AWS_ACCOUNT_ID}:userpool/us-east-1_oIS59FIu7"
         },
         {
             "Sid": "CloudWatchLogs",
@@ -60,19 +60,19 @@
                 "logs:CreateLogStream",
                 "logs:PutLogEvents"
             ],
-            "Resource": "arn:aws:logs:us-east-1:286802273987:log-group:/aws/amplify/*"
+            "Resource": "arn:aws:logs:us-east-1:${AWS_ACCOUNT_ID}:log-group:/aws/amplify/*"
         },
         {
             "Sid": "PublisherRootKeySsmRead",
             "Effect": "Allow",
             "Action": ["ssm:GetParameter", "ssm:GetParameters"],
-            "Resource": "arn:aws:ssm:us-east-1:286802273987:parameter/dash-registry/*"
+            "Resource": "arn:aws:ssm:us-east-1:${AWS_ACCOUNT_ID}:parameter/dash-registry/*"
         },
         {
             "Sid": "PublisherRootKeyKmsDecrypt",
             "Effect": "Allow",
             "Action": ["kms:Decrypt"],
-            "Resource": "arn:aws:kms:us-east-1:286802273987:key/ccbfccc4-eed4-47ec-8095-3f1b3530a2a1",
+            "Resource": "arn:aws:kms:us-east-1:${AWS_ACCOUNT_ID}:key/ccbfccc4-eed4-47ec-8095-3f1b3530a2a1",
             "Condition": {
                 "StringEquals": {
                     "kms:ViaService": "ssm.us-east-1.amazonaws.com"

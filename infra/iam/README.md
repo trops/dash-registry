@@ -4,7 +4,7 @@ The Next.js app runs on Amplify Hosting under a **manually-attached custom
 compute role**, `DashRegistrySSRComputeRole`. Its ARN appears in CloudWatch as:
 
 ```
-arn:aws:sts::286802273987:assumed-role/DashRegistrySSRComputeRole/AmplifyHostingCompute-app=d919rwhuzp7rj
+arn:aws:sts::<account-id>:assumed-role/DashRegistrySSRComputeRole/AmplifyHostingCompute-app=d919rwhuzp7rj
 ```
 
 ## Why this isn't in `amplify/backend.ts`
@@ -26,7 +26,9 @@ access to the new resources they touch. Symptoms:
 ## Source of truth
 
 [`DashRegistrySSRComputeRole.policy.json`](./DashRegistrySSRComputeRole.policy.json)
-is the **full desired inline policy**. It grants:
+is the **full desired inline policy**, kept as a template: ARNs use
+`${AWS_ACCOUNT_ID}` instead of the account ID (this repo is public), and the
+apply script fills it in from your AWS credentials. It grants:
 
 - DynamoDB data access to every `dash-registry-*` table **and its indexes**
   (including `PublisherKeys` + `ByFingerprint`).
@@ -44,8 +46,11 @@ node scripts/apply-ssr-compute-role-policy.mjs --dry-run   # preview
 node scripts/apply-ssr-compute-role-policy.mjs             # apply (PutRolePolicy)
 ```
 
-`PutRolePolicy` fully replaces the inline policy, so the script is idempotent.
-Requires AWS credentials with `iam:PutRolePolicy` on the role.
+The script reads the account ID from `aws sts get-caller-identity`, fills it
+into the template, and applies the result. `PutRolePolicy` fully replaces the
+inline policy, so the script is idempotent. Requires AWS credentials for the
+registry's account with `iam:PutRolePolicy` on the role. Never commit the
+rendered policy — keep the placeholder.
 
 ## When you add a new table, SSM param, or AWS resource
 

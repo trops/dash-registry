@@ -25,12 +25,17 @@
  *   node scripts/apply-ssr-compute-role-policy.mjs            # apply
  *   node scripts/apply-ssr-compute-role-policy.mjs --dry-run  # print only
  *
+ * The policy file is a template: ARNs use ${AWS_ACCOUNT_ID} (this repo is
+ * public). The account ID comes from `aws sts get-caller-identity` at apply
+ * time.
+ *
  * Requires AWS credentials with iam:PutRolePolicy on the role.
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { renderPolicy } from "./lib/iamPolicyTemplate.mjs";
 
 const ROLE_NAME = "DashRegistrySSRComputeRole";
 const POLICY_NAME = "DashRegistryAccess";
@@ -44,9 +49,14 @@ const policyPath = join(
     "DashRegistrySSRComputeRole.policy.json",
 );
 
-const policyDocument = readFileSync(policyPath, "utf8");
-// Validate it parses before we hand it to AWS.
-JSON.parse(policyDocument);
+const template = readFileSync(policyPath, "utf8");
+const accountId = execFileSync(
+    "aws",
+    ["sts", "get-caller-identity", "--query", "Account", "--output", "text"],
+    { encoding: "utf8" },
+).trim();
+// Fills in the account ID and checks the result is valid JSON.
+const policyDocument = renderPolicy(template, accountId);
 
 const dryRun = process.argv.includes("--dry-run");
 
