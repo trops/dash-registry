@@ -11,6 +11,11 @@ const fuseOptions: IFuseOptions<Package> = {
         { name: "widgets.name", weight: 1 },
         { name: "widgets.displayName", weight: 1 },
         { name: "widgets.description", weight: 0.5 },
+        // Bots and teams: by bot name, team member names, and the
+        // providers they use.
+        { name: "bot.name", weight: 1.5 },
+        { name: "team.members.name", weight: 1 },
+        { name: "providerTypes", weight: 1 },
     ],
     threshold: 0.4,
     includeScore: true,

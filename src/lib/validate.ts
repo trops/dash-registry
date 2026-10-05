@@ -65,6 +65,79 @@ interface Manifest {
   icon?: string;
   appOrigin?: string;
   colors?: ThemeColors;
+  // bot-team packages: a display summary of the .team.json in the zip.
+  team?: unknown;
+  // bot packages: a display summary of the bot.json in the zip.
+  bot?: unknown;
+}
+
+// Bots and teams (bot-teams TEAM-006, bot-factory US-026). The zip carries
+// the real definition, which the app re-validates at install; these checks
+// cover the summary the registry stores and shows.
+const TEAM_ROLE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const TEAM_EVENT = /^(completed|failed|tool\.[A-Za-z0-9_.:-]{1,200})$/;
+const MAX_TEAM_MEMBERS = 20;
+const MAX_TEAM_WIRING = 100;
+const MAX_BOT_NAME = 100;
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+function validBotName(v: unknown): boolean {
+  return typeof v === "string" && v.trim().length > 0 && v.length <= MAX_BOT_NAME;
+}
+
+function validateTeamSummary(team: unknown, errors: string[]): void {
+  if (!isRecord(team) || !Array.isArray(team.members)) {
+    errors.push('Team packages require "team.members"');
+    return;
+  }
+  const members = team.members as unknown[];
+  if (members.length === 0 || members.length > MAX_TEAM_MEMBERS) {
+    errors.push(`"team.members" must list 1-${MAX_TEAM_MEMBERS} bots`);
+    return;
+  }
+  const roles = new Set<string>();
+  members.forEach((m, i) => {
+    const prefix = `team.members[${i}]`;
+    if (!isRecord(m) || typeof m.role !== "string" || !TEAM_ROLE.test(m.role)) {
+      errors.push(`${prefix}.role must be lowercase letters, digits or dashes`);
+      return;
+    }
+    if (roles.has(m.role)) errors.push(`${prefix}.role "${m.role}" is a duplicate`);
+    roles.add(m.role);
+    if (!validBotName(m.name)) {
+      errors.push(`${prefix}.name is required (at most ${MAX_BOT_NAME} characters)`);
+    }
+  });
+  if (team.wiring === undefined) return;
+  if (!Array.isArray(team.wiring) || team.wiring.length > MAX_TEAM_WIRING) {
+    errors.push(`"team.wiring" must be a list of at most ${MAX_TEAM_WIRING} links`);
+    return;
+  }
+  (team.wiring as unknown[]).forEach((w, i) => {
+    const prefix = `team.wiring[${i}]`;
+    const on = isRecord(w) ? w.on : null;
+    if (
+      !isRecord(w) ||
+      !isRecord(on) ||
+      typeof w.role !== "string" ||
+      typeof on.role !== "string" ||
+      !roles.has(w.role) ||
+      !roles.has(on.role)
+    ) {
+      errors.push(`${prefix} must connect two of the team's roles`);
+      return;
+    }
+    if (w.role === on.role) {
+      errors.push(`${prefix}: a bot can't trigger itself`);
+      return;
+    }
+    if (typeof on.event !== "string" || !TEAM_EVENT.test(on.event)) {
+      errors.push(`${prefix}.on.event is not a known event`);
+    }
+  });
 }
 
 export interface ValidationResult {
@@ -108,8 +181,16 @@ export function validateManifest(manifest: Manifest): ValidationResult {
     errors.push(`"version" must be valid semver (got "${manifest.version}")`);
   }
 
-  // widgets — themes skip widget validation entirely
-  if (manifest.type === "theme") {
+  // widgets — themes, bots and teams skip widget validation entirely
+  if (manifest.type === "bot-team") {
+    validateTeamSummary(manifest.team, errors);
+  } else if (manifest.type === "bot") {
+    if (!isRecord(manifest.bot) || !validBotName(manifest.bot.name)) {
+      errors.push(
+        `Bot packages require "bot.name" (at most ${MAX_BOT_NAME} characters)`,
+      );
+    }
+  } else if (manifest.type === "theme") {
     // Theme packages require colors instead of widgets
     if (
       !manifest.colors ||
