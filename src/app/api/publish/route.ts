@@ -296,6 +296,14 @@ export async function POST(request: NextRequest) {
         if (manifest.colors) {
             packageRecord.colors = manifest.colors;
         }
+        // Bots and teams: the validated display summary (the definition
+        // itself is in the zip).
+        if (manifest.type === "bot-team" && manifest.team) {
+            packageRecord.team = manifest.team;
+        }
+        if (manifest.type === "bot" && manifest.bot) {
+            packageRecord.bot = manifest.bot;
+        }
         await putPackage(packageRecord);
 
         // 11. Create PackageVersion record
@@ -314,6 +322,12 @@ export async function POST(request: NextRequest) {
         versionRecord.appOrigin = manifest.appOrigin;
         if (manifest.theme) {
             versionRecord.theme = manifest.theme;
+        }
+        if (manifest.type === "bot-team" && manifest.team) {
+            versionRecord.team = manifest.team;
+        }
+        if (manifest.type === "bot" && manifest.bot) {
+            versionRecord.bot = manifest.bot;
         }
         // Phase 1A signing metadata — present only when the publisher
         // supplied (and the registry verified) a signature.

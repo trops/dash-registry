@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { Package } from "@/lib/registry";
+import { countLabel as packageCountLabel, typeLabel as packageTypeLabel } from "@/lib/packageTypes";
 
 interface PackageCardProps {
     pkg: Package;
@@ -27,26 +28,24 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
     widget: "bg-blue-500/10 border-blue-500/30 text-blue-400",
     dashboard: "bg-purple-500/10 border-purple-500/30 text-purple-400",
     theme: "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
+    bot: "bg-amber-500/10 border-amber-500/30 text-amber-400",
+    "bot-team": "bg-cyan-500/10 border-cyan-500/30 text-cyan-400",
 };
 
-const TYPE_LABELS: Record<string, string> = {
-    widget: "Widget",
-    dashboard: "Dashboard",
-    theme: "Theme",
+// Card icons for packages that have no widget icon.
+const TYPE_ICONS: Record<string, string> = {
+    theme: "\uD83C\uDFA8",
+    bot: "\uD83E\uDD16",
+    "bot-team": "\uD83D\uDC65",
 };
+
 
 export function PackageCard({ pkg }: PackageCardProps) {
     const pkgType = pkg.type || "widget";
     const typeBadgeClass =
         TYPE_BADGE_STYLES[pkgType] || TYPE_BADGE_STYLES.widget;
-    const typeLabel = TYPE_LABELS[pkgType] || "Widget";
-    const widgetCount = (pkg.widgets || []).length;
-    const countLabel =
-        pkgType === "theme"
-            ? ""
-            : pkgType === "dashboard"
-              ? `${widgetCount} widget dep${widgetCount !== 1 ? "s" : ""}`
-              : `${widgetCount} widget${widgetCount !== 1 ? "s" : ""}`;
+    const typeLabel = packageTypeLabel(pkgType);
+    const countLabel = packageCountLabel(pkg);
 
     return (
         <Link
@@ -56,9 +55,7 @@ export function PackageCard({ pkg }: PackageCardProps) {
             <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center space-x-3">
                     <span className="text-2xl">
-                        {pkgType === "theme"
-                            ? "\uD83C\uDFA8"
-                            : getIcon(pkg.widgets?.[0]?.icon)}
+                        {TYPE_ICONS[pkgType] || getIcon(pkg.widgets?.[0]?.icon)}
                     </span>
                     <div>
                         <h3 className="text-lg font-semibold text-white group-hover:text-dash-accent transition-colors">

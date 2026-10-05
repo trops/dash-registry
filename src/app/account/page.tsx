@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Authenticator, ThemeProvider } from "@aws-amplify/ui-react";
 import { useAuth } from "@/components/AuthContext";
 import AuthSync from "@/components/AuthSync";
+import { TYPE_FILTERS } from "@/lib/packageTypes";
 
 const amplifyDarkTheme = {
   name: "dash-dark",
@@ -87,12 +88,7 @@ interface PackageItem {
   updatedAt?: string;
 }
 
-const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
-  { label: "All", value: null },
-  { label: "Widgets", value: "widget" },
-  { label: "Dashboards", value: "dashboard" },
-  { label: "Themes", value: "theme" },
-];
+
 
 const VISIBILITY_FILTERS: Array<{ label: string; value: string | null }> = [
   { label: "All", value: null },

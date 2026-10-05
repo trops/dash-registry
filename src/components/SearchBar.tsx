@@ -6,18 +6,13 @@ import { createSearchIndex, searchPackages } from "@/lib/search";
 import { PackageCard } from "./PackageCard";
 import { TagFilter } from "./TagFilter";
 import { VALID_TAGS } from "@/lib/tags";
+import { TYPE_FILTERS } from "@/lib/packageTypes";
 
 interface SearchBarProps {
   packages: Package[];
   appOrigins: string[];
 }
 
-const TYPE_OPTIONS = [
-  { label: "All", value: null },
-  { label: "Widgets", value: "widget" },
-  { label: "Dashboards", value: "dashboard" },
-  { label: "Themes", value: "theme" },
-];
 
 export function SearchBar({ packages, appOrigins }: SearchBarProps) {
   const [query, setQuery] = useState("");
@@ -112,7 +107,7 @@ export function SearchBar({ packages, appOrigins }: SearchBarProps) {
               Type
             </h3>
             <div className="space-y-0.5">
-              {TYPE_OPTIONS.map((opt) => (
+              {TYPE_FILTERS.map((opt) => (
                 <button
                   key={opt.label}
                   onClick={() => setSelectedType(opt.value)}

@@ -23,6 +23,11 @@ export interface Widget {
     providers?: WidgetProvider[];
 }
 
+export interface TeamSummary {
+    members: Array<{ role: string; name: string }>;
+    wiring?: Array<{ role: string; on: { role: string; event: string } }>;
+}
+
 export interface Package {
     scope?: string;
     githubUser?: string;
@@ -48,6 +53,10 @@ export interface Package {
         secondary?: string;
         tertiary?: string;
     };
+    /** bot-team packages: who's on the team and how they're wired. */
+    team?: TeamSummary;
+    /** bot packages: the bot's display summary. */
+    bot?: { name: string };
     theme?: {
         key?: string;
         name?: string;

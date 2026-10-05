@@ -6,6 +6,7 @@ import { useAuth } from "@/components/AuthContext";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Package } from "@/lib/registry";
+import { wiringText } from "@/lib/packageTypes";
 
 interface PackageVersion {
     version: string;
@@ -365,6 +366,77 @@ export default function PackageDetailPage({
                     </div>
                 </div>
             )}
+
+            {/* Team (bot-team packages) */}
+            {pkg.type === "bot-team" && pkg.team && (() => {
+                const team = pkg.team;
+                const names = Object.fromEntries(
+                    team.members.map((m) => [m.role, m.name]),
+                );
+                return (
+                    <div className="mb-8">
+                        <h2 className="text-lg font-semibold text-white mb-4">
+                            The team ({team.members.length} bot
+                            {team.members.length !== 1 ? "s" : ""})
+                        </h2>
+                        <ul className="mb-4 space-y-2">
+                            {team.members.map((m) => (
+                                <li
+                                    key={m.role}
+                                    className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white"
+                                >
+                                    {m.name}
+                                </li>
+                            ))}
+                        </ul>
+                        {team.wiring && team.wiring.length > 0 && (
+                            <>
+                                <h3 className="text-sm font-semibold text-white mb-2">
+                                    How the team works together
+                                </h3>
+                                <ul className="mb-4 space-y-1 text-sm text-dash-muted">
+                                    {team.wiring.map((w, i) => (
+                                        <li key={i}>{wiringText(w, names)}</li>
+                                    ))}
+                                </ul>
+                            </>
+                        )}
+                    </div>
+                );
+            })()}
+
+            {/* Bot (bot packages) */}
+            {pkg.type === "bot" && pkg.bot && (
+                <div className="mb-8">
+                    <h2 className="text-lg font-semibold text-white mb-4">
+                        Bot
+                    </h2>
+                    <div className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white">
+                        {pkg.bot.name}
+                    </div>
+                </div>
+            )}
+
+            {/* Providers needed (bots and teams) */}
+            {(pkg.type === "bot" || pkg.type === "bot-team") &&
+                pkg.providerTypes &&
+                pkg.providerTypes.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-lg font-semibold text-white mb-3">
+                            Providers needed
+                        </h2>
+                        <div className="flex flex-wrap gap-2">
+                            {pkg.providerTypes.map((t) => (
+                                <span
+                                    key={t}
+                                    className="text-xs px-2 py-1 rounded bg-dash-bg border border-dash-border text-dash-muted"
+                                >
+                                    {t}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
             {/* Widgets */}
             {pkg.widgets && pkg.widgets.length > 0 && (
