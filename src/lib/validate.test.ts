@@ -17,7 +17,10 @@ const team = {
   ],
   wiring: [
     { role: "inbox", on: { role: "agenda", event: "completed" } },
-    { role: "writer", on: { role: "inbox", event: "tool.gmail.search_emails" } },
+    {
+      role: "writer",
+      on: { role: "inbox", event: "tool.gmail.search_emails" },
+    },
   ],
 };
 
@@ -140,5 +143,45 @@ describe("validateManifest — existing types unchanged", () => {
     const r = validateManifest({ type: "bot", bot: { name: "Inbox" } });
     expect(r.valid).toBe(false);
     expect(r.errors.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe("validateManifest — dashboards with bots (US-027)", () => {
+  const dashboard = {
+    ...base,
+    type: "dashboard",
+    widgets: [
+      {
+        package: "@trops/ask",
+        scope: "trops",
+        packageName: "ask",
+        widgetName: "Ask",
+      },
+    ],
+  };
+  it("a dashboard may carry its bots' summary, checked like a team", () => {
+    expect(validateManifest({ ...dashboard, team }).valid).toBe(true);
+    expect(validateManifest(dashboard).valid).toBe(true);
+    const bad = validateManifest({ ...dashboard, team: { members: [] } });
+    expect(bad.valid).toBe(false);
+  });
+  it("wiring may be on another bot's result", () => {
+    const withResult = {
+      members: team.members,
+      wiring: [
+        { role: "writer", on: { role: "inbox", event: "result.digest" } },
+      ],
+    };
+    expect(validateManifest({ ...dashboard, team: withResult }).valid).toBe(
+      true,
+    );
+    expect(
+      validateManifest({ ...base, type: "bot-team", team: withResult }).valid,
+    ).toBe(true);
+    const badName = {
+      members: team.members,
+      wiring: [{ role: "writer", on: { role: "inbox", event: "result.1x" } }],
+    };
+    expect(validateManifest({ ...dashboard, team: badName }).valid).toBe(false);
   });
 });
