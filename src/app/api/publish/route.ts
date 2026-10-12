@@ -298,7 +298,10 @@ export async function POST(request: NextRequest) {
         }
         // Bots and teams: the validated display summary (the definition
         // itself is in the zip).
-        if (manifest.type === "bot-team" && manifest.team) {
+        if (
+            (manifest.type === "bot-team" || manifest.type === "dashboard") &&
+            manifest.team
+        ) {
             packageRecord.team = manifest.team;
         }
         if (manifest.type === "bot" && manifest.bot) {

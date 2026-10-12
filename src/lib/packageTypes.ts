@@ -47,7 +47,11 @@ export function countLabel(pkg: CountablePackage): string {
     return types.length ? `uses ${types.join(", ")}` : "";
   }
   const n = (pkg.widgets || []).length;
-  if (type === "dashboard") return `${n} widget dep${n !== 1 ? "s" : ""}`;
+  if (type === "dashboard") {
+    const widgets = `${n} widget dep${n !== 1 ? "s" : ""}`;
+    const bots = (pkg.team?.members || []).length;
+    return bots ? `${widgets} · ${bots} bot${bots !== 1 ? "s" : ""}` : widgets;
+  }
   return `${n} widget${n !== 1 ? "s" : ""}`;
 }
 
@@ -64,6 +68,8 @@ export function wiringText(
       ? "completes"
       : ev === "failed"
         ? "fails"
-        : `uses ${ev.replace(/^tool\./, "").replace(".", " ")}`;
+        : ev.startsWith("result.")
+          ? `sends its ${ev.slice("result.".length)} result`
+          : `uses ${ev.replace(/^tool\./, "").replace(".", " ")}`;
   return `${from} ${what} → ${to} runs`;
 }

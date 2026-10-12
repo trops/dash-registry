@@ -367,8 +367,9 @@ export default function PackageDetailPage({
                 </div>
             )}
 
-            {/* Team (bot-team packages) */}
-            {pkg.type === "bot-team" && pkg.team && (() => {
+            {/* Team (bot-team packages, and a dashboard's bots) */}
+            {(pkg.type === "bot-team" || pkg.type === "dashboard") &&
+                pkg.team && (() => {
                 const team = pkg.team;
                 const names = Object.fromEntries(
                     team.members.map((m) => [m.role, m.name]),
@@ -376,9 +377,16 @@ export default function PackageDetailPage({
                 return (
                     <div className="mb-8">
                         <h2 className="text-lg font-semibold text-white mb-4">
-                            The team ({team.members.length} bot
+                            {pkg.type === "dashboard" ? "Its bots" : "The team"} (
+                            {team.members.length} bot
                             {team.members.length !== 1 ? "s" : ""})
                         </h2>
+                        {pkg.type === "dashboard" && (
+                            <p className="mb-3 text-sm text-dash-muted">
+                                Installed with the dashboard, paused until you
+                                resume them.
+                            </p>
+                        )}
                         <ul className="mb-4 space-y-2">
                             {team.members.map((m) => (
                                 <li
@@ -417,8 +425,10 @@ export default function PackageDetailPage({
                 </div>
             )}
 
-            {/* Providers needed (bots and teams) */}
-            {(pkg.type === "bot" || pkg.type === "bot-team") &&
+            {/* Providers needed (bots, teams, and dashboards with bots) */}
+            {(pkg.type === "bot" ||
+                pkg.type === "bot-team" ||
+                (pkg.type === "dashboard" && pkg.team)) &&
                 pkg.providerTypes &&
                 pkg.providerTypes.length > 0 && (
                     <div className="mb-8">

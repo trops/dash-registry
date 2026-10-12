@@ -66,6 +66,7 @@ interface Manifest {
   appOrigin?: string;
   colors?: ThemeColors;
   // bot-team packages: a display summary of the .team.json in the zip.
+  // Dashboards may carry one too: the bots their .dashboard.json installs.
   team?: unknown;
   // bot packages: a display summary of the bot.json in the zip.
   bot?: unknown;
@@ -75,7 +76,9 @@ interface Manifest {
 // the real definition, which the app re-validates at install; these checks
 // cover the summary the registry stores and shows.
 const TEAM_ROLE = /^[a-z0-9][a-z0-9-]{0,39}$/;
-const TEAM_EVENT = /^(completed|failed|tool\.[A-Za-z0-9_.:-]{1,200})$/;
+// A bot may also start on another bot's result (`result.<name>`).
+const TEAM_EVENT =
+  /^(completed|failed|tool\.[A-Za-z0-9_.:-]{1,200}|result\.[A-Za-z][A-Za-z0-9_]{0,39})$/;
 const MAX_TEAM_MEMBERS = 20;
 const MAX_TEAM_WIRING = 100;
 const MAX_BOT_NAME = 100;
@@ -85,7 +88,9 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 function validBotName(v: unknown): boolean {
-  return typeof v === "string" && v.trim().length > 0 && v.length <= MAX_BOT_NAME;
+  return (
+    typeof v === "string" && v.trim().length > 0 && v.length <= MAX_BOT_NAME
+  );
 }
 
 function validateTeamSummary(team: unknown, errors: string[]): void {
@@ -105,15 +110,20 @@ function validateTeamSummary(team: unknown, errors: string[]): void {
       errors.push(`${prefix}.role must be lowercase letters, digits or dashes`);
       return;
     }
-    if (roles.has(m.role)) errors.push(`${prefix}.role "${m.role}" is a duplicate`);
+    if (roles.has(m.role))
+      errors.push(`${prefix}.role "${m.role}" is a duplicate`);
     roles.add(m.role);
     if (!validBotName(m.name)) {
-      errors.push(`${prefix}.name is required (at most ${MAX_BOT_NAME} characters)`);
+      errors.push(
+        `${prefix}.name is required (at most ${MAX_BOT_NAME} characters)`,
+      );
     }
   });
   if (team.wiring === undefined) return;
   if (!Array.isArray(team.wiring) || team.wiring.length > MAX_TEAM_WIRING) {
-    errors.push(`"team.wiring" must be a list of at most ${MAX_TEAM_WIRING} links`);
+    errors.push(
+      `"team.wiring" must be a list of at most ${MAX_TEAM_WIRING} links`,
+    );
     return;
   }
   (team.wiring as unknown[]).forEach((w, i) => {
@@ -277,6 +287,12 @@ export function validateManifest(manifest: Manifest): ValidationResult {
         );
       }
     });
+  }
+
+  // A dashboard's bots, when it has any (bot-factory US-027): the same
+  // summary a bot-team package carries.
+  if (manifest.type === "dashboard" && manifest.team !== undefined) {
+    validateTeamSummary(manifest.team, errors);
   }
 
   // appOrigin (required)
