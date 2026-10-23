@@ -2,7 +2,10 @@
  * GET /api/packages/[scope]/[name]/download
  *
  * Generate a pre-signed S3 download URL for a package ZIP.
- * Auth required — tracks download in user's library.
+ * Signed in: tracks the download in the user's library. Signed out: public
+ * packages only (anything else answers 401, so the app asks to sign in and a
+ * private package's existence isn't revealed); logged under the hashed IP
+ * with the app's anonymous install ID, and rate-limited per IP.
  *
  * For private packages: checks entitlements before issuing the URL, uses a
  * 60-second TTL on the signed URL, and writes an InstallLog entry recording
@@ -24,6 +27,11 @@ import {
     logInstallAttempt,
     extractClientIp,
     hashIp,
+    anonymousLogKey,
+    isAnonymousRateLimited,
+    parseInstallId,
+    INSTALL_ID_HEADER,
+    ANON_RATE_WINDOW_SECONDS,
 } from "@/lib/installLog";
 import { isPrivatePackagesEnabled } from "@/lib/featureFlags";
 import {
@@ -38,25 +46,48 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { scope: string; name: string } },
 ) {
-    // 1. Authenticate
-    const token = await authenticateRequest(request);
-    if (!token) {
-        return NextResponse.json(
+    // 1. Authenticate. No token = a signed-out download (public only); a
+    //    token that doesn't verify (expired) still answers 401 so the app
+    //    can sign in again.
+    const authRequired = () =>
+        NextResponse.json(
             { error: "Authentication required to download packages" },
             { status: 401 },
         );
-    }
+    const sentToken = !!request.headers
+        .get("Authorization")
+        ?.startsWith("Bearer ");
+    const token = await authenticateRequest(request);
+    if (!token && sentToken) return authRequired();
+    const anonymous = !token;
 
     try {
         const { scope, name } = params;
         const { searchParams } = new URL(request.url);
+        const ipHash = hashIp(extractClientIp(request.headers));
+        const userAgent = request.headers.get("user-agent") || null;
+        const installId = parseInstallId(
+            request.headers.get(INSTALL_ID_HEADER),
+        );
 
         // 2. Get package
         const pkg = await getPackage(scope, name);
+        if (anonymous && (!pkg || pkg.visibility === "private")) {
+            return authRequired();
+        }
         if (!pkg) {
             return NextResponse.json(
                 { error: "Package not found" },
                 { status: 404 },
+            );
+        }
+        if (anonymous && (await isAnonymousRateLimited(ipHash))) {
+            return NextResponse.json(
+                { error: "Too many downloads — try again in a few minutes." },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(ANON_RATE_WINDOW_SECONDS) },
+                },
             );
         }
 
@@ -69,31 +100,37 @@ export async function GET(
         //    from our own Users table; that row was created at register
         //    time using the verified email from Cognito, so we trust it
         //    to match email-pending entitlements.
-        const ipHash = hashIp(extractClientIp(request.headers));
-        const userAgent = request.headers.get("user-agent") || null;
-        const userRecord = await getUserByCognitoId(token.sub);
-        const verifiedEmail =
-            (userRecord?.email as string | undefined) || token.email || null;
-        const entitlement = await checkEntitlement({
-            userId: token.sub,
-            verifiedEmail,
-            pkg: {
-                scope,
-                name,
-                visibility: pkg.visibility as string | undefined,
-                ownerId: (pkg.ownerId || pkg.author) as string | undefined,
-            },
-            version,
-        });
+        const logUserId = token ? token.sub : anonymousLogKey(ipHash);
+        const userRecord = token ? await getUserByCognitoId(token.sub) : null;
+        const verifiedEmail = token
+            ? (userRecord?.email as string | undefined) || token.email || null
+            : null;
+        // Signed out it's public (checked above).
+        const entitlement = token
+            ? await checkEntitlement({
+                  userId: token.sub,
+                  verifiedEmail,
+                  pkg: {
+                      scope,
+                      name,
+                      visibility: pkg.visibility as string | undefined,
+                      ownerId: (pkg.ownerId || pkg.author) as
+                          | string
+                          | undefined,
+                  },
+                  version,
+              })
+            : { allowed: true, reason: "public" as const, entitlementId: null };
 
         if (!entitlement.allowed) {
             // Log denial then return 404 (not 403) — we don't reveal that
             // a private package exists to non-entitled users.
             await logInstallAttempt({
-                userId: token.sub,
+                userId: logUserId,
                 packageScope: scope,
                 packageName: name,
                 version,
+                installId,
                 result:
                     entitlement.reason === "seats_exhausted"
                         ? "denied_seats_exhausted"
@@ -119,10 +156,11 @@ export async function GET(
 
         // 6. Log granted access
         await logInstallAttempt({
-            userId: token.sub,
+            userId: logUserId,
             packageScope: scope,
             packageName: name,
             version,
+            installId,
             result:
                 entitlement.reason === "owner"
                     ? "granted_owner"
@@ -134,14 +172,16 @@ export async function GET(
             userAgent,
         });
 
-        // 7. Track in user's library
-        await putUserLibraryEntry({
-            userId: token.sub,
-            packageScope: scope,
-            packageName: name,
-            installedVersion: version,
-            source: "registry",
-        });
+        // 7. Track in user's library (signed in only)
+        if (token) {
+            await putUserLibraryEntry({
+                userId: token.sub,
+                packageScope: scope,
+                packageName: name,
+                installedVersion: version,
+                source: "registry",
+            });
+        }
 
         // 8. Look up signing metadata for this version (Phase 1A).
         //    Optional — older versions published before signing
