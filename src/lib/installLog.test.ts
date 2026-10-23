@@ -6,12 +6,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("./db", () => ({
     putInstallLog: vi.fn(),
+    countInstallLogSince: vi.fn(),
 }));
 
-import { hashIp, extractClientIp, logInstallAttempt } from "./installLog";
-import { putInstallLog } from "./db";
+import {
+    hashIp,
+    extractClientIp,
+    logInstallAttempt,
+    parseInstallId,
+    anonymousLogKey,
+    isAnonymousRateLimited,
+    ANON_RATE_LIMIT,
+} from "./installLog";
+import { putInstallLog, countInstallLogSince } from "./db";
 
 const mockPut = putInstallLog as unknown as ReturnType<typeof vi.fn>;
+const mockCount = countInstallLogSince as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -46,11 +56,26 @@ describe("hashIp", () => {
 });
 
 describe("extractClientIp", () => {
-    it("prefers the leftmost x-forwarded-for entry", () => {
+    it("skips internal proxy hops after the viewer", () => {
         const h = new Headers({
             "x-forwarded-for": "203.0.113.7, 10.0.0.1, 10.0.0.2",
         });
         expect(extractClientIp(h)).toBe("203.0.113.7");
+    });
+
+    it("ignores addresses the client put in front (CloudFront appends the real one)", () => {
+        const h = new Headers({
+            "x-forwarded-for": "1.2.3.4, 5.6.7.8, 203.0.113.7, 172.16.0.9",
+        });
+        expect(extractClientIp(h)).toBe("203.0.113.7");
+    });
+
+    it("only internal hops: falls back to x-real-ip", () => {
+        const h = new Headers({
+            "x-forwarded-for": "10.0.0.1, 192.168.1.1",
+            "x-real-ip": "198.51.100.9",
+        });
+        expect(extractClientIp(h)).toBe("198.51.100.9");
     });
 
     it("trims whitespace around the entry", () => {
@@ -128,5 +153,56 @@ describe("logInstallAttempt", () => {
         ).resolves.toBeUndefined();
         expect(errSpy).toHaveBeenCalledOnce();
         errSpy.mockRestore();
+    });
+});
+
+describe("anonymous downloads", () => {
+    it("keeps only a UUID install ID", () => {
+        expect(parseInstallId("3F2504E0-4F89-41D3-9A0C-0305E82C3301")).toBe(
+            "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+        );
+        expect(parseInstallId("not-an-id")).toBeNull();
+        expect(parseInstallId("")).toBeNull();
+        expect(parseInstallId(null)).toBeNull();
+    });
+
+    it("logs signed-out downloads under the hashed IP", () => {
+        expect(anonymousLogKey("abc")).toBe("anon:abc");
+        expect(anonymousLogKey(null)).toBe("anon:unknown");
+    });
+
+    it("stores the install ID with the entry", async () => {
+        await logInstallAttempt({
+            userId: "anon:abc",
+            packageScope: "trops",
+            packageName: "clock",
+            version: "1.0.0",
+            result: "granted_public",
+            entitlementId: null,
+            ipHash: "abc",
+            userAgent: "Dash",
+            installId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+        });
+        expect(mockPut.mock.calls[0][0]).toMatchObject({
+            userId: "anon:abc",
+            installId: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+        });
+    });
+
+    it("rate-limits an IP at the limit within the window", async () => {
+        const now = Date.parse("2026-10-23T12:00:00.000Z");
+        mockCount.mockResolvedValueOnce(ANON_RATE_LIMIT - 1);
+        expect(await isAnonymousRateLimited("abc", now)).toBe(false);
+        expect(mockCount).toHaveBeenCalledWith(
+            "anon:abc",
+            "2026-10-23T11:50:00.000Z",
+        );
+        mockCount.mockResolvedValueOnce(ANON_RATE_LIMIT);
+        expect(await isAnonymousRateLimited("abc", now)).toBe(true);
+    });
+
+    it("lets the download through if the count can't be read", async () => {
+        mockCount.mockRejectedValueOnce(new Error("ddb down"));
+        expect(await isAnonymousRateLimited("abc")).toBe(false);
     });
 });

@@ -780,6 +780,9 @@ export interface InstallLogEntry {
   entitlementId: string | null;
   ipHash: string | null;
   userAgent: string | null;
+  // The app's anonymous install ID (one per Dash install), when it sent one:
+  // counts unique installs without an account.
+  installId?: string | null;
   requestedAt: string;
   expiresAt: number; // epoch seconds, DynamoDB TTL
 }
@@ -788,4 +791,17 @@ export async function putInstallLog(entry: InstallLogEntry) {
   await docClient.send(
     new PutCommand({ TableName: TABLES.INSTALL_LOG, Item: entry }),
   );
+}
+
+/** How many log entries one key (userId) has written since an ISO time. */
+export async function countInstallLogSince(userId: string, sinceIso: string) {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLES.INSTALL_LOG,
+      KeyConditionExpression: "userId = :u AND sk >= :s",
+      ExpressionAttributeValues: { ":u": userId, ":s": sinceIso },
+      Select: "COUNT",
+    }),
+  );
+  return result.Count || 0;
 }
