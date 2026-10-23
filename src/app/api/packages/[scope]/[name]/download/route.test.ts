@@ -118,6 +118,35 @@ describe("signed out", () => {
         expect(keys[0]).toBe(keys[1]);
     });
 
+    it("a preview is logged as one, not an install", async () => {
+        const res = await GET(
+            new NextRequest(
+                "https://registry.test/api/packages/trops/clock/download?purpose=preview",
+                { headers: { "x-forwarded-for": "203.0.113.7" } },
+            ),
+            params,
+        );
+        expect(res.status).toBe(200);
+        expect(mocked(putInstallLog).mock.calls[0][0].purpose).toBe("preview");
+    });
+
+    it("a signed-out preview still counts toward the rate limit", async () => {
+        mocked(countInstallLogSince).mockResolvedValue(120);
+        const res = await GET(
+            new NextRequest(
+                "https://registry.test/api/packages/trops/clock/download?purpose=preview",
+                { headers: { "x-forwarded-for": "203.0.113.7" } },
+            ),
+            params,
+        );
+        expect(res.status).toBe(429);
+    });
+
+    it("a download is an install unless it says otherwise", async () => {
+        await GET(req(), params);
+        expect(mocked(putInstallLog).mock.calls[0][0].purpose).toBe("install");
+    });
+
     it("a bad install ID isn't stored", async () => {
         await GET(req({ "x-dash-install-id": "<script>" }), params);
         expect(mocked(putInstallLog).mock.calls[0][0].installId).toBeNull();
@@ -125,6 +154,27 @@ describe("signed out", () => {
 });
 
 describe("with a token", () => {
+    it("signed in: a preview stays out of the library and takes no seat", async () => {
+        mocked(authenticateRequest).mockResolvedValue({ sub: "user-1" });
+        const res = await GET(
+            new NextRequest(
+                "https://registry.test/api/packages/trops/clock/download?purpose=preview",
+                { headers: { Authorization: "Bearer good" } },
+            ),
+            params,
+        );
+        expect(res.status).toBe(200);
+        expect(mocked(putInstallLog).mock.calls[0][0].purpose).toBe("preview");
+        expect(putUserLibraryEntry).not.toHaveBeenCalled();
+        expect(mocked(checkEntitlement).mock.calls[0][0].claimSeat).toBe(false);
+    });
+
+    it("signed in: an install takes a seat as before", async () => {
+        mocked(authenticateRequest).mockResolvedValue({ sub: "user-1" });
+        await GET(req({ Authorization: "Bearer good" }), params);
+        expect(mocked(checkEntitlement).mock.calls[0][0].claimSeat).toBe(true);
+    });
+
     it("signed in: a missing package is still 404", async () => {
         mocked(authenticateRequest).mockResolvedValue({ sub: "user-1" });
         mocked(getPackage).mockResolvedValue(null);

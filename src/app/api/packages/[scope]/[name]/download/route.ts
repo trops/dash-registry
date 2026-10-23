@@ -7,6 +7,10 @@
  * private package's existence isn't revealed); logged under the hashed IP
  * with the app's anonymous install ID, and rate-limited per IP.
  *
+ * ?purpose=preview marks a read that isn't an install (the app previewing an
+ * update, or drawing a starter's thumbnail): logged as a preview and kept
+ * out of the user's library, so install counts stay installs.
+ *
  * For private packages: checks entitlements before issuing the URL, uses a
  * 60-second TTL on the signed URL, and writes an InstallLog entry recording
  * the access decision (granted or denied + reason).
@@ -69,6 +73,8 @@ export async function GET(
         const installId = parseInstallId(
             request.headers.get(INSTALL_ID_HEADER),
         );
+        const purpose =
+            searchParams.get("purpose") === "preview" ? "preview" : "install";
 
         // 2. Get package
         const pkg = await getPackage(scope, name);
@@ -119,6 +125,8 @@ export async function GET(
                           | undefined,
                   },
                   version,
+                  // A preview doesn't use up a seat on a seat-limited grant.
+                  claimSeat: purpose === "install",
               })
             : { allowed: true, reason: "public" as const, entitlementId: null };
 
@@ -131,6 +139,7 @@ export async function GET(
                 packageName: name,
                 version,
                 installId,
+                purpose,
                 result:
                     entitlement.reason === "seats_exhausted"
                         ? "denied_seats_exhausted"
@@ -161,6 +170,7 @@ export async function GET(
             packageName: name,
             version,
             installId,
+            purpose,
             result:
                 entitlement.reason === "owner"
                     ? "granted_owner"
@@ -172,8 +182,8 @@ export async function GET(
             userAgent,
         });
 
-        // 7. Track in user's library (signed in only)
-        if (token) {
+        // 7. Track in user's library (signed in, installs only)
+        if (token && purpose === "install") {
             await putUserLibraryEntry({
                 userId: token.sub,
                 packageScope: scope,

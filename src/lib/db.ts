@@ -783,6 +783,9 @@ export interface InstallLogEntry {
   // The app's anonymous install ID (one per Dash install), when it sent one:
   // counts unique installs without an account.
   installId?: string | null;
+  // "preview": read without installing (an update's preview, a starter's
+  // thumbnail) — not counted as an install.
+  purpose?: "install" | "preview";
   requestedAt: string;
   expiresAt: number; // epoch seconds, DynamoDB TTL
 }
