@@ -216,6 +216,18 @@ describe("checkEntitlement", () => {
         expect(mockClaim).toHaveBeenCalledWith("ent_test");
     });
 
+    it("a preview (claimSeat false) doesn't take a seat", async () => {
+        mockList.mockResolvedValue([entitlement({ seats: 5, activeSeats: 5 })]);
+        const result = await checkEntitlement({
+            userId: "user-123",
+            pkg: pkg(),
+            version: "1.0.0",
+            claimSeat: false,
+        });
+        expect(result.allowed).toBe(true);
+        expect(mockClaim).not.toHaveBeenCalled();
+    });
+
     it("claims a seat only when seats is bounded", async () => {
         mockList.mockResolvedValue([entitlement({ seats: null })]);
         const result = await checkEntitlement({

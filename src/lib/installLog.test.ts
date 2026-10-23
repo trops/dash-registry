@@ -171,6 +171,20 @@ describe("anonymous downloads", () => {
         expect(anonymousLogKey(null)).toBe("anon:unknown");
     });
 
+    it("an entry is an install unless it says otherwise", async () => {
+        await logInstallAttempt({
+            userId: "u",
+            packageScope: "s",
+            packageName: "n",
+            version: "1",
+            result: "granted_public",
+            entitlementId: null,
+            ipHash: null,
+            userAgent: null,
+        });
+        expect(mockPut.mock.calls[0][0].purpose).toBe("install");
+    });
+
     it("stores the install ID with the entry", async () => {
         await logInstallAttempt({
             userId: "anon:abc",

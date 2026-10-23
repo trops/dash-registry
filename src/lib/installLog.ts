@@ -72,6 +72,7 @@ export interface LogInstallParams {
   ipHash: string | null;
   userAgent: string | null;
   installId?: string | null;
+  purpose?: "install" | "preview";
 }
 
 export async function logInstallAttempt(params: LogInstallParams) {
@@ -89,6 +90,7 @@ export async function logInstallAttempt(params: LogInstallParams) {
     ipHash: params.ipHash,
     userAgent: params.userAgent,
     installId: params.installId ?? null,
+    purpose: params.purpose ?? "install",
     requestedAt,
     expiresAt,
   };

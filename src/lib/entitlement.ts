@@ -99,12 +99,17 @@ export interface CheckEntitlementParams {
   verifiedEmail?: string | null;
   pkg: PackageLike;
   version: string;
+  /**
+   * Take a seat on a seat-limited grant (default). A preview — read, not
+   * installed — passes false: it doesn't use one up.
+   */
+  claimSeat?: boolean;
 }
 
 export async function checkEntitlement(
   params: CheckEntitlementParams,
 ): Promise<EntitlementResult> {
-  const { userId, verifiedEmail, pkg, version } = params;
+  const { userId, verifiedEmail, pkg, version, claimSeat = true } = params;
 
   // Feature flag: until enabled, treat every package as public.
   // This keeps existing public-package behavior unchanged in production.
@@ -150,7 +155,7 @@ export async function checkEntitlement(
       sawExpired = true;
       continue;
     }
-    if (e.seats != null) {
+    if (e.seats != null && claimSeat) {
       const claimed = await claimEntitlementSeat(e.entitlementId);
       if (!claimed) {
         sawSeatsExhausted = true;
