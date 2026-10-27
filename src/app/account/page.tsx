@@ -86,6 +86,15 @@ interface PackageItem {
   tags?: string[];
   type?: string;
   updatedAt?: string;
+  allowRemix?: boolean;
+}
+
+// Whether a package may be remixed: the owner's choice, else public yes /
+// private no (lib/remixRules).
+function allowsRemix(pkg: PackageItem): boolean {
+  return typeof pkg.allowRemix === "boolean"
+    ? pkg.allowRemix
+    : (pkg.visibility || "public") !== "private";
 }
 
 
@@ -138,12 +147,14 @@ export default function AccountPage() {
     tags: string;
     visibility: string;
     displayName: string;
+    allowRemix: boolean;
   }>({
     description: "",
     category: "",
     tags: "",
     visibility: "",
     displayName: "",
+    allowRemix: true,
   });
   const [saving, setSaving] = useState(false);
 
@@ -194,6 +205,7 @@ export default function AccountPage() {
       tags: (pkg.tags || []).join(", "),
       visibility: pkg.visibility || "public",
       displayName: pkg.displayName || "",
+      allowRemix: allowsRemix(pkg),
     });
   }
 
@@ -213,6 +225,11 @@ export default function AccountPage() {
         visibility: editForm.visibility,
         displayName: editForm.displayName,
       };
+      // Sent only when changed, so a package that follows its visibility
+      // keeps doing so.
+      if (editForm.allowRemix !== allowsRemix(pkg)) {
+        updates.allowRemix = editForm.allowRemix;
+      }
 
       const res = await fetch(`/api/packages/${pkg.scope}/${pkg.name}`, {
         method: "PATCH",
@@ -624,6 +641,13 @@ export default function AccountPage() {
                                 setEditForm({
                                   ...editForm,
                                   visibility: e.target.value,
+                                  // Following the visibility (not changed by
+                                  // hand): it follows the new one too.
+                                  allowRemix:
+                                    editForm.allowRemix ===
+                                    (editForm.visibility !== "private")
+                                      ? e.target.value !== "private"
+                                      : editForm.allowRemix,
                                 })
                               }
                               className="px-3 py-1.5 rounded bg-dash-surface border border-dash-border text-white text-sm focus:outline-none focus:border-dash-accent"
@@ -631,6 +655,27 @@ export default function AccountPage() {
                               <option value="public">Public</option>
                               <option value="private">Private</option>
                             </select>
+                          </div>
+                          <div>
+                            <label className="flex items-center gap-2 text-sm text-white">
+                              <input
+                                type="checkbox"
+                                checked={editForm.allowRemix}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    allowRemix: e.target.checked,
+                                  })
+                                }
+                                className="accent-dash-accent"
+                              />
+                              Allow remixes
+                            </label>
+                            <p className="text-xs text-dash-muted mt-1">
+                              Others can publish their own version of this,
+                              credited to you. Off by default for private
+                              packages.
+                            </p>
                           </div>
                           <div className="flex gap-2 pt-1">
                             <button

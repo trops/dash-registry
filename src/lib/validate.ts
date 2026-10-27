@@ -10,6 +10,7 @@ const SEMVER = /^\d+\.\d+\.\d+(-[0-9A-Za-z-]+)?$/;
 const PASCAL_CASE = /^[A-Z][a-zA-Z0-9]+$/;
 
 import { VALID_TAGS } from "@/lib/tags";
+import { remixFieldErrors } from "@/lib/remixRules";
 
 const VALID_CATEGORIES = [
   "general",
@@ -70,6 +71,10 @@ interface Manifest {
   team?: unknown;
   // bot packages: a display summary of the bot.json in the zip.
   bot?: unknown;
+  // Remixes (lib/remixRules): whether this package may be remixed, and the
+  // package this one is a remix of.
+  allowRemix?: unknown;
+  remixedFrom?: unknown;
 }
 
 // Bots and teams (bot-teams TEAM-006, bot-factory US-026). The zip carries
@@ -341,6 +346,8 @@ export function validateManifest(manifest: Manifest): ValidationResult {
   if (manifest.description && manifest.description.length > 500) {
     warnings.push('"description" should be at most 500 characters');
   }
+
+  errors.push(...remixFieldErrors(manifest));
 
   return {
     valid: errors.length === 0,

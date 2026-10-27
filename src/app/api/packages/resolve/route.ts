@@ -10,7 +10,8 @@
  *   { refs: [{ scope, name }, ...] }   // max 100 refs
  *
  * Response:
- *   [{ scope, name, exists, latestVersion, visibility, ownedByMe, readable }]
+ *   [{ scope, name, exists, latestVersion, visibility, ownedByMe, readable,
+ *      allowRemix }]
  *
  * Auth is optional. Anonymous callers get ownedByMe/readable = false and
  * private packages they can't read surface as { exists: false } to avoid
@@ -20,6 +21,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPackage, getUserByCognitoId } from "@/lib/db";
 import { authenticateRequest } from "@/lib/auth";
 import { checkEntitlement } from "@/lib/entitlement";
+import { effectiveAllowRemix, type OriginalPackage } from "@/lib/remixRules";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,8 @@ type ResolvedRef = {
     visibility: "public" | "private" | null;
     ownedByMe: boolean;
     readable: boolean;
+    // Whether it may be remixed (lib/remixRules); null when not found.
+    allowRemix: boolean | null;
 };
 
 export async function POST(request: NextRequest) {
@@ -104,6 +108,7 @@ export async function POST(request: NextRequest) {
                         visibility: null,
                         ownedByMe: false,
                         readable: false,
+                        allowRemix: null,
                     };
                 }
 
@@ -140,6 +145,7 @@ export async function POST(request: NextRequest) {
                         visibility: null,
                         ownedByMe: false,
                         readable: false,
+                        allowRemix: null,
                     };
                 }
 
@@ -151,6 +157,7 @@ export async function POST(request: NextRequest) {
                     visibility,
                     ownedByMe,
                     readable,
+                    allowRemix: effectiveAllowRemix(pkg as OriginalPackage),
                 };
             }),
         );

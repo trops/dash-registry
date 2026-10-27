@@ -15,6 +15,7 @@ import {
 import { deletePackageZip } from "@/lib/s3";
 import { authenticateRequest } from "@/lib/auth";
 import { checkEntitlement } from "@/lib/entitlement";
+import { effectiveAllowRemix, type OriginalPackage } from "@/lib/remixRules";
 
 export async function GET(
   request: NextRequest,
@@ -72,6 +73,8 @@ export async function GET(
 
     return NextResponse.json({
       ...pkg,
+      // Whether it may be remixed (an older package follows its visibility).
+      allowRemix: effectiveAllowRemix(pkg as OriginalPackage),
       versions: versions.map((v) => ({
         version: v.version,
         createdAt: v.createdAt,
@@ -119,6 +122,7 @@ export async function PATCH(
       "tags",
       "visibility",
       "displayName",
+      "allowRemix",
     ];
     const updates: Record<string, unknown> = {};
 
@@ -135,6 +139,16 @@ export async function PATCH(
     ) {
       return NextResponse.json(
         { error: "Visibility must be 'public' or 'private'" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      updates.allowRemix !== undefined &&
+      typeof updates.allowRemix !== "boolean"
+    ) {
+      return NextResponse.json(
+        { error: "allowRemix must be true or false" },
         { status: 400 },
       );
     }
