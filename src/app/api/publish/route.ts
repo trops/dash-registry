@@ -20,7 +20,14 @@ import {
 import { uploadPackageZip, buildS3Key } from "@/lib/s3";
 import { validateManifest } from "@/lib/validate";
 import { nextLatestVersion, publishConflict } from "@/lib/publishRules";
-import { buildEntitlement } from "@/lib/entitlement";
+import { buildEntitlement, checkEntitlement } from "@/lib/entitlement";
+import {
+    allowRemixOnPublish,
+    parseRemixedFrom,
+    remixDecision,
+    type OriginalPackage,
+    type RemixCredit,
+} from "@/lib/remixRules";
 import {
     verifyPublisherCert,
     verifyZipSignature,
@@ -164,6 +171,51 @@ export async function POST(request: NextRequest) {
         });
         if (conflict) {
             return NextResponse.json({ error: conflict }, { status: 409 });
+        }
+
+        // 6c. A remix: allowed only when the original allows it (and, when
+        //     it's private, the publisher can read it); the credit is taken
+        //     from the original's record (see lib/remixRules).
+        let remixCredit: RemixCredit | null = null;
+        const remixRef = parseRemixedFrom(manifest.remixedFrom);
+        if (remixRef) {
+            const original = await getPackage(remixRef.scope, remixRef.name);
+            let canRead = false;
+            if (original && original.visibility === "private") {
+                const decision = await checkEntitlement({
+                    userId: token.sub,
+                    verifiedEmail:
+                        (user.email as string | undefined) ||
+                        token.email ||
+                        null,
+                    pkg: {
+                        scope: remixRef.scope,
+                        name: remixRef.name,
+                        visibility: "private",
+                        ownerId: (original.ownerId || original.author) as
+                            | string
+                            | undefined,
+                    },
+                    version: remixRef.version,
+                    // A read check: it must not use up one of the seats.
+                    claimSeat: false,
+                });
+                canRead = decision.allowed;
+            }
+            const remix = remixDecision({
+                ref: remixRef,
+                original: original as OriginalPackage | null,
+                publisherId: token.sub,
+                canRead,
+                previous: (existing?.remixedFrom as RemixCredit | undefined) || null,
+            });
+            if (!remix.ok) {
+                return NextResponse.json(
+                    { error: remix.error },
+                    { status: remix.status },
+                );
+            }
+            remixCredit = remix.credit;
         }
 
         // 7. Verify signature + publisher cert (Phase 1A).
@@ -327,6 +379,18 @@ export async function POST(request: NextRequest) {
             createdAt: existing?.createdAt || now,
         };
         packageRecord.appOrigin = manifest.appOrigin;
+        // Whether it may be remixed, and what it's a remix of (lib/remixRules).
+        const allowRemix = allowRemixOnPublish(
+            manifest.allowRemix,
+            existing as OriginalPackage | null,
+        );
+        if (allowRemix !== undefined) packageRecord.allowRemix = allowRemix;
+        if (remixCredit) {
+            packageRecord.remixedFrom = remixCredit;
+        } else if (existing?.remixedFrom) {
+            // A later version that doesn't say keeps the credit.
+            packageRecord.remixedFrom = existing.remixedFrom;
+        }
         if (manifest.providerTypes && Array.isArray(manifest.providerTypes)) {
             packageRecord.providerTypes = manifest.providerTypes;
         }

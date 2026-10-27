@@ -2,6 +2,8 @@
 
 import { WidgetList } from "@/components/WidgetList";
 import { ManageAccessLink } from "@/components/ManageAccessLink";
+import { RemixCredit } from "@/components/RemixCredit";
+import type { RemixCredit as RemixCreditRecord } from "@/lib/remixRules";
 import { useAuth } from "@/components/AuthContext";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -18,6 +20,8 @@ interface PackageDetail extends Package {
     versions?: PackageVersion[];
     ownerId?: string;
     visibility?: string;
+    allowRemix?: boolean;
+    remixedFrom?: RemixCreditRecord | null;
 }
 
 export default function PackageDetailPage({
@@ -169,6 +173,7 @@ export default function PackageDetailPage({
                             by{" "}
                             <span className="text-white">{pkg.author}</span>
                         </p>
+                        <RemixCredit credit={pkg.remixedFrom} />
                     </div>
                     <div className="flex items-center gap-2">
                         {pkg.visibility === "private" && (
