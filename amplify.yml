@@ -11,6 +11,11 @@ applications:
             - npm install --no-audit --no-fund
         build:
           commands:
+            # Private packages are enforced only when the running server
+            # sees ENABLE_PRIVATE_PACKAGES=true (src/lib/featureFlags.ts).
+            # Amplify's console variables reach the build, not the SSR
+            # server — Next.js reads .env.production at runtime.
+            - echo "ENABLE_PRIVATE_PACKAGES=true" >> .env.production
             - npm run build
         postBuild:
           commands:
