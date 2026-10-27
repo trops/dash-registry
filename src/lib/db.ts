@@ -15,6 +15,7 @@ import {
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 import outputs from "../../amplify_outputs.json";
+import { PROFILE_SK_PREFIX } from "./accountProfiles";
 
 const custom = (outputs as Record<string, unknown>).custom as
   | Record<string, string>
@@ -273,9 +274,7 @@ export async function listPackages(filters?: {
   // providerType matches the query. Packages without providerTypes are excluded
   // only when the filter is active.
   if (filters?.providerTypes && filters.providerTypes.length > 0) {
-    const wanted = new Set(
-      filters.providerTypes.map((t) => t.toLowerCase()),
-    );
+    const wanted = new Set(filters.providerTypes.map((t) => t.toLowerCase()));
     packages = packages.filter((pkg) => {
       const types = (pkg.providerTypes as string[]) || [];
       return types.some((t) => wanted.has(t.toLowerCase()));
@@ -419,14 +418,98 @@ export async function putUserLibraryEntry(entry: Record<string, unknown>) {
 }
 
 export async function getUserLibrary(userId: string) {
+  const items: Record<string, unknown>[] = [];
+  let startKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLES.USER_LIBRARY,
+        KeyConditionExpression: "userId = :uid",
+        // Profiles kept in the account share the table (lib/accountProfiles).
+        FilterExpression: "NOT begins_with(sk, :profile)",
+        ExpressionAttributeValues: {
+          ":uid": userId,
+          ":profile": PROFILE_SK_PREFIX,
+        },
+        ExclusiveStartKey: startKey,
+      }),
+    );
+    items.push(...(result.Items || []));
+    startKey = result.LastEvaluatedKey;
+  } while (startKey);
+  return items;
+}
+
+// --- Profiles kept in the account (lib/accountProfiles) ---
+
+export async function listAccountProfiles(userId: string) {
+  const items: Record<string, unknown>[] = [];
+  let startKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLES.USER_LIBRARY,
+        KeyConditionExpression: "userId = :uid AND begins_with(sk, :profile)",
+        ExpressionAttributeValues: {
+          ":uid": userId,
+          ":profile": PROFILE_SK_PREFIX,
+        },
+        // The list doesn't need each profile's body.
+        // "name" and "size" are DynamoDB reserved words.
+        ProjectionExpression:
+          "profileId, #n, revision, updatedAt, updatedOn, #s",
+        ExpressionAttributeNames: { "#n": "name", "#s": "size" },
+        ExclusiveStartKey: startKey,
+      }),
+    );
+    items.push(...(result.Items || []));
+    startKey = result.LastEvaluatedKey;
+  } while (startKey);
+  return items;
+}
+
+export async function getAccountProfile(userId: string, sk: string) {
   const result = await docClient.send(
-    new QueryCommand({
-      TableName: TABLES.USER_LIBRARY,
-      KeyConditionExpression: "userId = :uid",
-      ExpressionAttributeValues: { ":uid": userId },
-    }),
+    new GetCommand({ TableName: TABLES.USER_LIBRARY, Key: { userId, sk } }),
   );
-  return result.Items || [];
+  return result.Item || null;
+}
+
+/**
+ * Store a profile only if the stored revision is still `baseRevision`
+ * (null: only if there's none yet). False when another save got there
+ * first.
+ */
+export async function putAccountProfile(
+  item: Record<string, unknown>,
+  baseRevision: number | null,
+): Promise<boolean> {
+  try {
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLES.USER_LIBRARY,
+        Item: item,
+        ...(baseRevision === null
+          ? { ConditionExpression: "attribute_not_exists(sk)" }
+          : {
+              ConditionExpression: "revision = :base",
+              ExpressionAttributeValues: { ":base": baseRevision },
+            }),
+      }),
+    );
+    return true;
+  } catch (err) {
+    if ((err as { name?: string }).name === "ConditionalCheckFailedException") {
+      return false;
+    }
+    throw err;
+  }
+}
+
+export async function deleteAccountProfile(userId: string, sk: string) {
+  await docClient.send(
+    new DeleteCommand({ TableName: TABLES.USER_LIBRARY, Key: { userId, sk } }),
+  );
 }
 
 // --- Org operations ---
@@ -440,9 +523,7 @@ export interface Org {
 }
 
 export async function putOrg(org: Org) {
-  await docClient.send(
-    new PutCommand({ TableName: TABLES.ORGS, Item: org }),
-  );
+  await docClient.send(new PutCommand({ TableName: TABLES.ORGS, Item: org }));
 }
 
 export async function getOrg(orgId: string) {
@@ -654,10 +735,7 @@ export async function getEntitlement(entitlementId: string) {
   return (result.Item as Entitlement | undefined) || null;
 }
 
-export async function listEntitlementsForPackage(
-  scope: string,
-  name: string,
-) {
+export async function listEntitlementsForPackage(scope: string, name: string) {
   const packageKey = `${scope}#${name}`;
   const result = await docClient.send(
     new QueryCommand({
