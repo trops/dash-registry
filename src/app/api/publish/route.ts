@@ -13,11 +13,13 @@ import {
     putPackage,
     putPackageVersion,
     getPackage,
+    getPackageVersion,
     listEntitlementsForPackage,
     putEntitlement,
 } from "@/lib/db";
 import { uploadPackageZip, buildS3Key } from "@/lib/s3";
 import { validateManifest } from "@/lib/validate";
+import { nextLatestVersion, publishConflict } from "@/lib/publishRules";
 import { buildEntitlement } from "@/lib/entitlement";
 import {
     verifyPublisherCert,
@@ -132,6 +134,36 @@ export async function POST(request: NextRequest) {
                 },
                 { status: 403 },
             );
+        }
+
+        // 6b. A published version never changes, and a package keeps its
+        //     kind (see lib/publishRules).
+        const versionExists = existing
+            ? Boolean(
+                  await getPackageVersion(
+                      scope,
+                      manifest.name,
+                      manifest.version,
+                  ),
+              )
+            : false;
+        const conflict = publishConflict({
+            scope,
+            name: manifest.name,
+            version: manifest.version,
+            type: manifest.type,
+            existing: existing
+                ? {
+                      type: existing.type as string | undefined,
+                      latestVersion: existing.latestVersion as
+                          | string
+                          | undefined,
+                  }
+                : null,
+            versionExists,
+        });
+        if (conflict) {
+            return NextResponse.json({ error: conflict }, { status: 409 });
         }
 
         // 7. Verify signature + publisher cert (Phase 1A).
@@ -267,6 +299,11 @@ export async function POST(request: NextRequest) {
                 : (existing?.visibility as string | undefined) || "public";
 
         // 10. Create/update Package record
+        const latestVersion = nextLatestVersion(
+            existing?.latestVersion as string | undefined,
+            manifest.version,
+        );
+        const isLatest = latestVersion === manifest.version;
         const now = new Date().toISOString();
         const packageRecord: Record<string, unknown> = {
             scope,
@@ -278,11 +315,14 @@ export async function POST(request: NextRequest) {
             category: manifest.category || "general",
             tags: manifest.tags || [],
             icon: manifest.icon || "",
-            latestVersion: manifest.version,
+            // Publishing an older line's patch doesn't make it the latest.
+            latestVersion: latestVersion,
             repository: manifest.repository || "",
             visibility,
             ownerId: token.sub,
-            downloadUrl,
+            downloadUrl: isLatest
+                ? downloadUrl
+                : (existing?.downloadUrl as string | undefined) || downloadUrl,
             widgets: manifest.widgets || [],
             createdAt: existing?.createdAt || now,
         };
