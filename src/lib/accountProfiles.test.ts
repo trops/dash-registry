@@ -38,6 +38,10 @@ describe("readProfileBody", () => {
     const r = readProfileBody({ manifest });
     expect("manifest" in r && r.manifest.name).toBe("Mac Mini");
   });
+  it("a v3 profile", () => {
+    const r = readProfileBody({ manifest: { ...manifest, schemaVersion: 3 } });
+    expect("manifest" in r && r.manifest.schemaVersion).toBe(3);
+  });
   it("refuses anything else", () => {
     expect(readProfileBody(null)).toEqual({
       error: "Send the profile as JSON.",
@@ -45,6 +49,10 @@ describe("readProfileBody", () => {
     expect(
       "error" in
         readProfileBody({ manifest: { ...manifest, schemaVersion: 1 } }),
+    ).toBe(true);
+    expect(
+      "error" in
+        readProfileBody({ manifest: { ...manifest, schemaVersion: 4 } }),
     ).toBe(true);
     expect(
       "error" in readProfileBody({ manifest: { ...manifest, name: "" } }),
