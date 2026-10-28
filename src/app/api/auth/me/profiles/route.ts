@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
 import { listAccountProfiles } from "@/lib/db";
-import { isStoredProfile, profileSummary } from "@/lib/accountProfiles";
+import { isListedProfile, profileSummary } from "@/lib/accountProfiles";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
   try {
     const items = await listAccountProfiles(token.sub);
     const profiles = (items as unknown[])
-      .filter(isStoredProfile)
+      // The list fetches no body: check only what it fetches.
+      .filter(isListedProfile)
       .map(profileSummary)
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     return NextResponse.json({ profiles });
