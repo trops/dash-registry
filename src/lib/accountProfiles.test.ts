@@ -3,6 +3,7 @@ import {
   MAX_PROFILE_BYTES,
   PROFILE_SK_PREFIX,
   isProfileId,
+  isListedProfile,
   isStoredProfile,
   profileSk,
   profileSummary,
@@ -127,5 +128,21 @@ describe("first save and stored rows", () => {
       }),
     ).toBe(false);
     expect(isStoredProfile(null)).toBe(false);
+  });
+});
+
+describe("listed rows", () => {
+  it("a listed profile has no body (the list doesn't fetch it) and still counts", () => {
+    const listed = {
+      profileId: "mini",
+      name: "Mac Mini",
+      revision: 2,
+      updatedAt: "t",
+      updatedOn: null,
+      size: 10,
+    };
+    expect(isListedProfile(listed)).toBe(true);
+    expect(isStoredProfile(listed)).toBe(false);
+    expect(isListedProfile({ sk: "trops#clock" })).toBe(false);
   });
 });

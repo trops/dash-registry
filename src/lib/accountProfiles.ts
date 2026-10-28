@@ -39,9 +39,7 @@ export function profileSk(id: string): string {
 /** A profile from a request body, checked: `{ manifest, json }` or `{ error }`. */
 export function readProfileBody(
   body: unknown,
-):
-  | { manifest: Record<string, unknown>; json: string }
-  | { error: string } {
+): { manifest: Record<string, unknown>; json: string } | { error: string } {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return { error: "Send the profile as JSON." };
   }
@@ -105,8 +103,26 @@ export function isStoredProfile(item: unknown): item is StoredProfile {
   );
 }
 
+/**
+ * Whether a listed row is a stored profile. The list fetches no body (it
+ * can be large), so this checks only what the list fetches.
+ */
+export function isListedProfile(
+  item: unknown,
+): item is Omit<StoredProfile, "body" | "userId" | "sk"> {
+  const i = item as Partial<StoredProfile> | null;
+  return (
+    !!i && typeof i.profileId === "string" && typeof i.revision === "number"
+  );
+}
+
 /** What the list shows for a stored profile. */
-export function profileSummary(item: StoredProfile) {
+export function profileSummary(
+  item: Pick<
+    StoredProfile,
+    "profileId" | "name" | "revision" | "updatedAt" | "updatedOn" | "size"
+  >,
+) {
   return {
     id: item.profileId,
     name: item.name,
