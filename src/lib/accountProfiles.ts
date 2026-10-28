@@ -48,8 +48,13 @@ export function readProfileBody(
     return { error: '"manifest" must be the profile.' };
   }
   const m = manifest as Record<string, unknown>;
-  if (m.kind !== "dash-profile" || m.schemaVersion !== 2) {
-    return { error: "That isn't a v2 Dash profile." };
+  // v2: packages at exact versions; v3: the user's setup (dashboards, bots,
+  // themes, folders) kept in the profile, with widgets by version.
+  if (
+    m.kind !== "dash-profile" ||
+    (m.schemaVersion !== 2 && m.schemaVersion !== 3)
+  ) {
+    return { error: "That isn't a Dash profile this registry keeps." };
   }
   if (typeof m.name !== "string" || !m.name.trim() || m.name.length > 60) {
     return { error: "The profile needs a name (60 characters or fewer)." };
