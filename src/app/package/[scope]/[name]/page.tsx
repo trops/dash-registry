@@ -11,471 +11,479 @@ import type { Package } from "@/lib/registry";
 import { wiringText } from "@/lib/packageTypes";
 
 interface PackageVersion {
-    version: string;
-    createdAt: string;
-    fileSize?: number;
+  version: string;
+  createdAt: string;
+  fileSize?: number;
 }
 
 interface PackageDetail extends Package {
-    versions?: PackageVersion[];
-    ownerId?: string;
-    visibility?: string;
-    allowRemix?: boolean;
-    remixedFrom?: RemixCreditRecord | null;
+  versions?: PackageVersion[];
+  ownerId?: string;
+  visibility?: string;
+  allowRemix?: boolean;
+  remixedFrom?: RemixCreditRecord | null;
 }
 
 export default function PackageDetailPage({
-    params,
+  params,
 }: {
-    params: { scope: string; name: string };
+  params: { scope: string; name: string };
 }) {
-    const { scope, name } = params;
-    const { getAccessToken, isAuthenticated, isLoading: authLoading } =
-        useAuth();
+  const { scope, name } = params;
+  const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
 
-    const [pkg, setPkg] = useState<PackageDetail | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notFound, setNotFound] = useState(false);
+  const [pkg, setPkg] = useState<PackageDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-    useEffect(() => {
-        // Wait for auth to settle so we either send a token (if signed in)
-        // or fire anonymously — not somewhere in between.
-        if (authLoading) return;
+  useEffect(() => {
+    // Wait for auth to settle so we either send a token (if signed in)
+    // or fire anonymously — not somewhere in between.
+    if (authLoading) return;
 
-        let cancelled = false;
-        (async () => {
-            setLoading(true);
-            setNotFound(false);
-            try {
-                const headers: Record<string, string> = {};
-                if (isAuthenticated) {
-                    const token = await getAccessToken();
-                    if (token) headers.Authorization = `Bearer ${token}`;
-                }
-                const res = await fetch(`/api/packages/${scope}/${name}`, {
-                    headers,
-                    cache: "no-store",
-                });
-                if (cancelled) return;
-                if (res.status === 404) {
-                    setNotFound(true);
-                } else if (res.ok) {
-                    setPkg(await res.json());
-                } else {
-                    setNotFound(true);
-                }
-            } catch {
-                if (!cancelled) setNotFound(true);
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        })();
-        return () => {
-            cancelled = true;
-        };
-    }, [scope, name, isAuthenticated, authLoading, getAccessToken]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const headers: Record<string, string> = {};
+        if (isAuthenticated) {
+          const token = await getAccessToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+        }
+        const res = await fetch(`/api/packages/${scope}/${name}`, {
+          headers,
+          cache: "no-store",
+        });
+        if (cancelled) return;
+        if (res.status === 404) {
+          setNotFound(true);
+        } else if (res.ok) {
+          setPkg(await res.json());
+        } else {
+          setNotFound(true);
+        }
+      } catch {
+        if (!cancelled) setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scope, name, isAuthenticated, authLoading, getAccessToken]);
 
-    if (authLoading || loading) {
-        return (
-            <div className="max-w-4xl mx-auto px-6 py-12">
-                <div className="mb-6">
-                    <Link
-                        href="/"
-                        className="text-sm text-dash-accent hover:underline"
-                    >
-                        &larr; Back to Registry
-                    </Link>
-                </div>
-                <div className="text-sm text-dash-muted py-8 text-center">
-                    Loading package…
-                </div>
-            </div>
-        );
-    }
-
-    if (notFound || !pkg) {
-        return (
-            <div className="max-w-4xl mx-auto px-6 py-12">
-                <div className="mb-6">
-                    <Link
-                        href="/"
-                        className="text-sm text-dash-accent hover:underline"
-                    >
-                        &larr; Back to Registry
-                    </Link>
-                </div>
-                <div className="p-5 rounded-lg bg-dash-surface border border-dash-border text-dash-muted">
-                    <h1 className="text-xl font-semibold text-white mb-2">
-                        Package not found
-                    </h1>
-                    <p className="text-sm">
-                        <span className="font-mono">
-                            {scope}/{name}
-                        </span>{" "}
-                        doesn&apos;t exist, or you don&apos;t have access to
-                        view it.
-                        {!isAuthenticated && (
-                            <>
-                                {" "}
-                                If this is a private package you own,{" "}
-                                <Link
-                                    href="/account"
-                                    className="text-dash-accent hover:underline"
-                                >
-                                    sign in
-                                </Link>
-                                .
-                            </>
-                        )}
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
+  if (authLoading || loading) {
     return (
-        <div className="max-w-4xl mx-auto px-6 py-12">
-            {/* Breadcrumb */}
-            <div className="mb-6">
-                <Link
-                    href="/"
-                    className="text-sm text-dash-accent hover:underline"
-                >
-                    &larr; Back to Registry
-                </Link>
-            </div>
-
-            {/* Deprecation Banner */}
-            {pkg.deprecated && (
-                <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                    <div className="flex items-center gap-2 text-yellow-400">
-                        <span className="text-lg">&#9888;</span>
-                        <span className="font-semibold">
-                            This package is deprecated
-                        </span>
-                    </div>
-                    {pkg.deprecatedMessage && (
-                        <p className="text-sm text-yellow-400/80 mt-1 ml-7">
-                            {pkg.deprecatedMessage}
-                        </p>
-                    )}
-                </div>
-            )}
-
-            {/* Package Header */}
-            <div className="mb-8">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            {pkg.displayName}
-                        </h1>
-                        <p className="text-dash-muted">
-                            by{" "}
-                            <span className="text-white">{pkg.author}</span>
-                        </p>
-                        <RemixCredit credit={pkg.remixedFrom} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {pkg.visibility === "private" && (
-                            <span className="text-xs px-2 py-1 rounded bg-amber-500/10 border border-amber-500/40 text-amber-300 uppercase tracking-wide">
-                                Private
-                            </span>
-                        )}
-                        <span className="text-sm px-3 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted">
-                            v{pkg.latestVersion || pkg.version}
-                        </span>
-                    </div>
-                </div>
-
-                {pkg.ownerId && pkg.scope && pkg.name && (
-                    <div className="mt-3">
-                        <ManageAccessLink
-                            scope={pkg.scope}
-                            name={pkg.name}
-                            ownerId={pkg.ownerId}
-                            visibility={pkg.visibility}
-                        />
-                    </div>
-                )}
-
-                <p className="text-base text-dash-text mt-4">
-                    {pkg.description}
-                </p>
-
-                {/* Tags */}
-                {pkg.tags && pkg.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
-                        {pkg.tags.map((tag) => (
-                            <span
-                                key={tag}
-                                className="text-xs px-2 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted"
-                            >
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Install Instructions */}
-            <div className="mb-8 p-5 rounded-lg bg-dash-surface border border-dash-border">
-                <h2 className="text-lg font-semibold text-white mb-3">
-                    Installation
-                </h2>
-                <p className="text-sm text-dash-muted mb-3">
-                    This package is available in the Dash app&apos;s Discover
-                    tab. You can also install it directly from the registry.
-                </p>
-                {pkg.downloadUrl && (
-                    <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text overflow-x-auto">
-                        <code>
-                            {pkg.downloadUrl
-                                .replace(
-                                    /\{version\}/g,
-                                    pkg.latestVersion || pkg.version,
-                                )
-                                .replace(/\{name\}/g, pkg.name)}
-                        </code>
-                    </div>
-                )}
-            </div>
-
-            {/* Version History */}
-            {pkg.versions && pkg.versions.length > 0 && (
-                <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-white mb-4">
-                        Version History
-                    </h2>
-                    <div className="space-y-2">
-                        {pkg.versions.map((v) => (
-                            <div
-                                key={v.version}
-                                className="flex items-center justify-between p-3 rounded-lg bg-dash-bg border border-dash-border"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm font-mono text-white">
-                                        v{v.version}
-                                    </span>
-                                    {v.version ===
-                                        (pkg.latestVersion || pkg.version) && (
-                                        <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/30">
-                                            latest
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="flex items-center gap-4 text-xs text-dash-muted">
-                                    {v.fileSize && (
-                                        <span>
-                                            {(v.fileSize / 1024).toFixed(1)} KB
-                                        </span>
-                                    )}
-                                    {v.createdAt && (
-                                        <span>
-                                            {new Date(
-                                                v.createdAt,
-                                            ).toLocaleDateString()}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Theme Colors (standalone themes) */}
-            {pkg.type === "theme" &&
-                (() => {
-                    const colors = pkg.colors || pkg.theme?.colors;
-                    if (!colors) return null;
-                    const entries = (
-                        ["primary", "secondary", "tertiary"] as const
-                    )
-                        .map((key) => ({ key, value: colors[key] }))
-                        .filter((e) => e.value);
-                    if (entries.length === 0) return null;
-                    return (
-                        <div className="mb-8">
-                            <h2 className="text-lg font-semibold text-white mb-4">
-                                Theme Colors
-                            </h2>
-                            <div className="flex items-center gap-6">
-                                {entries.map(({ key, value }) => (
-                                    <div
-                                        key={key}
-                                        className="flex flex-col items-center gap-2"
-                                    >
-                                        <div
-                                            className="h-16 w-16 rounded-lg border-2 border-dash-border"
-                                            style={{
-                                                backgroundColor: value,
-                                            }}
-                                        />
-                                        <span className="text-sm text-white capitalize">
-                                            {key}
-                                        </span>
-                                        <span className="text-xs text-dash-muted font-mono">
-                                            {value}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })()}
-
-            {/* Bundled Theme */}
-            {pkg.theme && (
-                <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-white mb-4">
-                        Included Theme
-                    </h2>
-                    <div className="p-4 rounded-lg bg-dash-bg border border-dash-border flex items-center gap-4">
-                        <span className="text-2xl">{"\uD83C\uDFA8"}</span>
-                        <div className="flex-1">
-                            <h4 className="text-base font-medium text-white">
-                                {pkg.theme.name ||
-                                    pkg.theme.key ||
-                                    "Bundled Theme"}
-                            </h4>
-                            <p className="text-sm text-dash-muted mt-0.5">
-                                Auto-installed with this dashboard
-                            </p>
-                        </div>
-                        {pkg.theme.colors && (
-                            <div className="flex items-center gap-2">
-                                {(
-                                    ["primary", "secondary", "tertiary"] as const
-                                ).map((key) => {
-                                    const color = pkg.theme?.colors?.[key];
-                                    if (!color) return null;
-                                    return (
-                                        <div
-                                            key={key}
-                                            className="flex flex-col items-center gap-1"
-                                        >
-                                            <div
-                                                className="h-8 w-8 rounded-full border-2 border-dash-border"
-                                                style={{
-                                                    backgroundColor: color,
-                                                }}
-                                            />
-                                            <span className="text-[10px] text-dash-muted capitalize">
-                                                {key}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Team (bot-team packages, and a dashboard's bots) */}
-            {(pkg.type === "bot-team" || pkg.type === "dashboard") &&
-                pkg.team && (() => {
-                const team = pkg.team;
-                const names = Object.fromEntries(
-                    team.members.map((m) => [m.role, m.name]),
-                );
-                return (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-semibold text-white mb-4">
-                            {pkg.type === "dashboard" ? "Its bots" : "The team"} (
-                            {team.members.length} bot
-                            {team.members.length !== 1 ? "s" : ""})
-                        </h2>
-                        {pkg.type === "dashboard" && (
-                            <p className="mb-3 text-sm text-dash-muted">
-                                Installed with the dashboard, paused until you
-                                resume them.
-                            </p>
-                        )}
-                        <ul className="mb-4 space-y-2">
-                            {team.members.map((m) => (
-                                <li
-                                    key={m.role}
-                                    className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white"
-                                >
-                                    {m.name}
-                                </li>
-                            ))}
-                        </ul>
-                        {team.wiring && team.wiring.length > 0 && (
-                            <>
-                                <h3 className="text-sm font-semibold text-white mb-2">
-                                    How the team works together
-                                </h3>
-                                <ul className="mb-4 space-y-1 text-sm text-dash-muted">
-                                    {team.wiring.map((w, i) => (
-                                        <li key={i}>{wiringText(w, names)}</li>
-                                    ))}
-                                </ul>
-                            </>
-                        )}
-                    </div>
-                );
-            })()}
-
-            {/* Bot (bot packages) */}
-            {pkg.type === "bot" && pkg.bot && (
-                <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-white mb-4">
-                        Bot
-                    </h2>
-                    <div className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white">
-                        {pkg.bot.name}
-                    </div>
-                </div>
-            )}
-
-            {/* Providers needed (bots, teams, and dashboards with bots) */}
-            {(pkg.type === "bot" ||
-                pkg.type === "bot-team" ||
-                (pkg.type === "dashboard" && pkg.team)) &&
-                pkg.providerTypes &&
-                pkg.providerTypes.length > 0 && (
-                    <div className="mb-8">
-                        <h2 className="text-lg font-semibold text-white mb-3">
-                            Providers needed
-                        </h2>
-                        <div className="flex flex-wrap gap-2">
-                            {pkg.providerTypes.map((t) => (
-                                <span
-                                    key={t}
-                                    className="text-xs px-2 py-1 rounded bg-dash-bg border border-dash-border text-dash-muted"
-                                >
-                                    {t}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-            {/* Widgets */}
-            {pkg.widgets && pkg.widgets.length > 0 && (
-                <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-white mb-4">
-                        Included Widgets ({pkg.widgets.length})
-                    </h2>
-                    <WidgetList widgets={pkg.widgets} />
-                </div>
-            )}
-
-            {/* Links */}
-            <div className="flex gap-4">
-                {pkg.repository && (
-                    <a
-                        href={pkg.repository}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-4 py-2 rounded-lg bg-dash-surface border border-dash-border text-dash-muted hover:text-white hover:border-dash-accent/50 transition-colors text-sm"
-                    >
-                        View Source
-                    </a>
-                )}
-            </div>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="mb-6">
+          <Link href="/" className="text-sm text-dash-accent hover:underline">
+            &larr; Back to Registry
+          </Link>
         </div>
+        <div className="text-sm text-dash-muted py-8 text-center">
+          Loading package…
+        </div>
+      </div>
     );
+  }
+
+  if (notFound || !pkg) {
+    return (
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="mb-6">
+          <Link href="/" className="text-sm text-dash-accent hover:underline">
+            &larr; Back to Registry
+          </Link>
+        </div>
+        <div className="p-5 rounded-lg bg-dash-surface border border-dash-border text-dash-muted">
+          <h1 className="text-xl font-semibold text-white mb-2">
+            Package not found
+          </h1>
+          <p className="text-sm">
+            <span className="font-mono">
+              {scope}/{name}
+            </span>{" "}
+            doesn&apos;t exist, or you don&apos;t have access to view it.
+            {!isAuthenticated && (
+              <>
+                {" "}
+                If this is a private package you own,{" "}
+                <Link
+                  href="/account"
+                  className="text-dash-accent hover:underline"
+                >
+                  sign in
+                </Link>
+                .
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-6 py-12">
+      {/* Breadcrumb */}
+      <div className="mb-6">
+        <Link href="/" className="text-sm text-dash-accent hover:underline">
+          &larr; Back to Registry
+        </Link>
+      </div>
+
+      {/* Deprecation Banner */}
+      {pkg.deprecated && (
+        <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+          <div className="flex items-center gap-2 text-yellow-400">
+            <span className="text-lg">&#9888;</span>
+            <span className="font-semibold">This package is deprecated</span>
+          </div>
+          {pkg.deprecatedMessage && (
+            <p className="text-sm text-yellow-400/80 mt-1 ml-7">
+              {pkg.deprecatedMessage}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Package Header */}
+      <div className="mb-8">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {pkg.displayName}
+            </h1>
+            <p className="text-dash-muted">
+              by <span className="text-white">{pkg.author}</span>
+            </p>
+            <RemixCredit credit={pkg.remixedFrom} />
+          </div>
+          <div className="flex items-center gap-2">
+            {pkg.visibility === "private" && (
+              <span className="text-xs px-2 py-1 rounded bg-amber-500/10 border border-amber-500/40 text-amber-300 uppercase tracking-wide">
+                Private
+              </span>
+            )}
+            <span className="text-sm px-3 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted">
+              v{pkg.latestVersion || pkg.version}
+            </span>
+          </div>
+        </div>
+
+        {pkg.ownerId && pkg.scope && pkg.name && (
+          <div className="mt-3">
+            <ManageAccessLink
+              scope={pkg.scope}
+              name={pkg.name}
+              ownerId={pkg.ownerId}
+              visibility={pkg.visibility}
+            />
+          </div>
+        )}
+
+        <p className="text-base text-dash-text mt-4">{pkg.description}</p>
+
+        {/* Tags */}
+        {pkg.tags && pkg.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            {pkg.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-xs px-2 py-1 rounded bg-dash-surface border border-dash-border text-dash-muted"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Install Instructions */}
+      <div className="mb-8 p-5 rounded-lg bg-dash-surface border border-dash-border">
+        <h2 className="text-lg font-semibold text-white mb-3">Installation</h2>
+        <p className="text-sm text-dash-muted mb-3">
+          This package is available in the Dash app&apos;s Discover tab. You can
+          also install it directly from the registry.
+        </p>
+        {pkg.downloadUrl && (
+          <div className="bg-dash-bg rounded p-3 font-mono text-sm text-dash-text overflow-x-auto">
+            <code>
+              {pkg.downloadUrl
+                .replace(/\{version\}/g, pkg.latestVersion || pkg.version)
+                .replace(/\{name\}/g, pkg.name)}
+            </code>
+          </div>
+        )}
+      </div>
+
+      {/* Version History */}
+      {pkg.versions && pkg.versions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Version History
+          </h2>
+          <div className="space-y-2">
+            {pkg.versions.map((v) => (
+              <div
+                key={v.version}
+                className="flex items-center justify-between p-3 rounded-lg bg-dash-bg border border-dash-border"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-mono text-white">
+                    v{v.version}
+                  </span>
+                  {v.version === (pkg.latestVersion || pkg.version) && (
+                    <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/30">
+                      latest
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 text-xs text-dash-muted">
+                  {v.fileSize && (
+                    <span>{(v.fileSize / 1024).toFixed(1)} KB</span>
+                  )}
+                  {v.createdAt && (
+                    <span>{new Date(v.createdAt).toLocaleDateString()}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Theme Colors (standalone themes) */}
+      {pkg.type === "theme" &&
+        (() => {
+          const colors = pkg.colors || pkg.theme?.colors;
+          if (!colors) return null;
+          const entries = (["primary", "secondary", "tertiary"] as const)
+            .map((key) => ({ key, value: colors[key] }))
+            .filter((e) => e.value);
+          if (entries.length === 0) return null;
+          return (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                Theme Colors
+              </h2>
+              <div className="flex items-center gap-6">
+                {entries.map(({ key, value }) => (
+                  <div key={key} className="flex flex-col items-center gap-2">
+                    <div
+                      className="h-16 w-16 rounded-lg border-2 border-dash-border"
+                      style={{
+                        backgroundColor: value,
+                      }}
+                    />
+                    <span className="text-sm text-white capitalize">{key}</span>
+                    <span className="text-xs text-dash-muted font-mono">
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* Bundled Theme */}
+      {pkg.theme && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Included Theme
+          </h2>
+          <div className="p-4 rounded-lg bg-dash-bg border border-dash-border flex items-center gap-4">
+            <span className="text-2xl">{"\uD83C\uDFA8"}</span>
+            <div className="flex-1">
+              <h4 className="text-base font-medium text-white">
+                {pkg.theme.name || pkg.theme.key || "Bundled Theme"}
+              </h4>
+              <p className="text-sm text-dash-muted mt-0.5">
+                Auto-installed with this dashboard
+              </p>
+            </div>
+            {pkg.theme.colors && (
+              <div className="flex items-center gap-2">
+                {(["primary", "secondary", "tertiary"] as const).map((key) => {
+                  const color = pkg.theme?.colors?.[key];
+                  if (!color) return null;
+                  return (
+                    <div key={key} className="flex flex-col items-center gap-1">
+                      <div
+                        className="h-8 w-8 rounded-full border-2 border-dash-border"
+                        style={{
+                          backgroundColor: color,
+                        }}
+                      />
+                      <span className="text-[10px] text-dash-muted capitalize">
+                        {key}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Team (bot-team packages, and a dashboard's bots) */}
+      {(pkg.type === "bot-team" || pkg.type === "dashboard") &&
+        pkg.team &&
+        (() => {
+          const team = pkg.team;
+          const names = Object.fromEntries(
+            team.members.map((m) => [m.role, m.name]),
+          );
+          return (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-white mb-4">
+                {pkg.type === "dashboard" ? "Its bots" : "The team"} (
+                {team.members.length} bot
+                {team.members.length !== 1 ? "s" : ""})
+              </h2>
+              {pkg.type === "dashboard" && (
+                <p className="mb-3 text-sm text-dash-muted">
+                  Installed with the dashboard, paused until you resume them.
+                </p>
+              )}
+              <ul className="mb-4 space-y-2">
+                {team.members.map((m) => (
+                  <li
+                    key={m.role}
+                    className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white"
+                  >
+                    {m.name}
+                  </li>
+                ))}
+              </ul>
+              {team.wiring && team.wiring.length > 0 && (
+                <>
+                  <h3 className="text-sm font-semibold text-white mb-2">
+                    How the team works together
+                  </h3>
+                  <ul className="mb-4 space-y-1 text-sm text-dash-muted">
+                    {team.wiring.map((w, i) => (
+                      <li key={i}>{wiringText(w, names)}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
+      {/* Bot (bot packages) */}
+      {pkg.type === "bot" && pkg.bot && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">Bot</h2>
+          <div className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white">
+            {pkg.bot.name}
+          </div>
+        </div>
+      )}
+
+      {/* Flow (flow packages): its steps, in order */}
+      {pkg.type === "flow" && pkg.flow && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            The flow ({pkg.flow.steps.length} step
+            {pkg.flow.steps.length !== 1 ? "s" : ""})
+          </h2>
+          <ol className="mb-4 space-y-2">
+            {pkg.flow.steps.map((st, i) => (
+              <li
+                key={st.key}
+                className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white flex items-center gap-3"
+              >
+                <span className="text-dash-muted">{i + 1}</span>
+                <span className="flex-1">{st.name}</span>
+                <span className="text-xs px-2 py-0.5 rounded border border-dash-border text-dash-muted">
+                  {st.kind === "bot"
+                    ? "AI"
+                    : st.kind === "check"
+                      ? "Code check"
+                      : st.kind === "you"
+                        ? "You"
+                        : "Source"}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {pkg.flow.files && pkg.flow.files.length > 0 && (
+            <p className="text-sm text-dash-muted">
+              Files: {pkg.flow.files.join(", ")}. Scripts from someone else are
+              shown to you before they can run.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* The flows a dashboard needs */}
+      {pkg.type === "dashboard" && pkg.flows && pkg.flows.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-3">
+            Flows it needs
+          </h2>
+          <ul className="space-y-1 text-sm text-dash-muted">
+            {pkg.flows.map((f) => (
+              <li key={f.package}>
+                {f.package} {f.version}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Providers needed (bots, teams, and dashboards with bots) */}
+      {(pkg.type === "bot" ||
+        pkg.type === "bot-team" ||
+        (pkg.type === "dashboard" && pkg.team)) &&
+        pkg.providerTypes &&
+        pkg.providerTypes.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-3">
+              Providers needed
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {pkg.providerTypes.map((t) => (
+                <span
+                  key={t}
+                  className="text-xs px-2 py-1 rounded bg-dash-bg border border-dash-border text-dash-muted"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* Widgets */}
+      {pkg.widgets && pkg.widgets.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">
+            Included Widgets ({pkg.widgets.length})
+          </h2>
+          <WidgetList widgets={pkg.widgets} />
+        </div>
+      )}
+
+      {/* Links */}
+      <div className="flex gap-4">
+        {pkg.repository && (
+          <a
+            href={pkg.repository}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-dash-surface border border-dash-border text-dash-muted hover:text-white hover:border-dash-accent/50 transition-colors text-sm"
+          >
+            View Source
+          </a>
+        )}
+      </div>
+    </div>
+  );
 }

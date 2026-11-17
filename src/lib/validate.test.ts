@@ -185,3 +185,81 @@ describe("validateManifest — dashboards with bots (US-027)", () => {
     expect(validateManifest({ ...dashboard, team: badName }).valid).toBe(false);
   });
 });
+
+describe("validateManifest — flow packages", () => {
+  const flow = {
+    name: "Ticket to PR",
+    steps: [
+      { key: "reader", kind: "source", name: "Ticket reader" },
+      { key: "builder", kind: "bot", name: "Builder" },
+      { key: "ci", kind: "check", name: "GitHub CI" },
+      { key: "you", kind: "you", name: "You" },
+    ],
+    bots: 2,
+    files: ["scripts/check-pr.js", "data/protected-paths.txt"],
+  };
+
+  it("accepts a flow with its steps and files, and no widgets", () => {
+    const r = validateManifest({
+      ...base,
+      name: "ticket-to-pr",
+      type: "flow",
+      flow,
+    });
+    expect(r.errors).toEqual([]);
+    expect(r.valid).toBe(true);
+  });
+
+  it("requires steps of known kinds with unique keys", () => {
+    expect(validateManifest({ ...base, type: "flow" }).valid).toBe(false);
+    const bad = validateManifest({
+      ...base,
+      type: "flow",
+      flow: {
+        ...flow,
+        steps: [
+          { key: "a", kind: "robot", name: "A" },
+          { key: "a", kind: "bot", name: "B" },
+        ],
+      },
+    });
+    expect(bad.valid).toBe(false);
+    expect(bad.errors.join(" ")).toMatch(/kind must be one of/);
+    expect(bad.errors.join(" ")).toMatch(/duplicate/);
+  });
+
+  it("files only in scripts/, checks/ or data/", () => {
+    const r = validateManifest({
+      ...base,
+      type: "flow",
+      flow: { ...flow, files: ["../secrets.txt"] },
+    });
+    expect(r.valid).toBe(false);
+  });
+
+  it("a dashboard lists the flows it needs by version range", () => {
+    const dash = {
+      ...base,
+      type: "dashboard",
+      widgets: [
+        {
+          package: "@trops/notes",
+          scope: "trops",
+          packageName: "notes",
+          widgetName: "Notes",
+        },
+      ],
+    };
+    expect(
+      validateManifest({
+        ...dash,
+        flows: [{ package: "@trops/ticket-to-pr", version: "^1.2" }],
+      }).valid,
+    ).toBe(true);
+    const bad = validateManifest({
+      ...dash,
+      flows: [{ package: "ticket-to-pr", version: "latest!" }],
+    });
+    expect(bad.valid).toBe(false);
+  });
+});

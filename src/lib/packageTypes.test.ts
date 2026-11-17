@@ -15,6 +15,7 @@ describe("package types", () => {
       "Themes",
       "Bots",
       "Teams",
+      "Flows",
     ]);
     expect(TYPE_FILTERS.find((f) => f.label === "Teams")?.value).toBe(
       "bot-team",
@@ -26,6 +27,7 @@ describe("package types", () => {
     expect(typeLabel("bot")).toBe("Bot");
     expect(typeLabel("bot-team")).toBe("Team");
     expect(typeLabel("theme")).toBe("Theme");
+    expect(typeLabel("flow")).toBe("Flow");
     expect(typeLabel(undefined)).toBe("Widget");
   });
 
@@ -108,5 +110,22 @@ describe("dashboards with bots (US-027)", () => {
         { writer: "Writer", inbox: "Inbox" },
       ),
     ).toBe("Inbox sends its digest result → Writer runs");
+  });
+
+  it("a flow's steps and bots", () => {
+    expect(
+      countLabel({
+        type: "flow",
+        flow: {
+          name: "Ticket to PR",
+          steps: [
+            { key: "a", kind: "source", name: "Ticket reader" },
+            { key: "b", kind: "bot", name: "Builder" },
+            { key: "c", kind: "check", name: "GitHub CI" },
+          ],
+          bots: 2,
+        },
+      }),
+    ).toBe("3 steps · 2 bots");
   });
 });

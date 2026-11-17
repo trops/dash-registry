@@ -4,7 +4,7 @@
  * (bot-factory US-026, bot-teams TEAM-006) sit beside widgets, dashboards
  * and themes.
  */
-import type { TeamSummary } from "@/lib/registry";
+import type { FlowSummary, TeamSummary } from "@/lib/registry";
 
 export const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
   { label: "All", value: null },
@@ -13,6 +13,7 @@ export const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
   { label: "Themes", value: "theme" },
   { label: "Bots", value: "bot" },
   { label: "Teams", value: "bot-team" },
+  { label: "Flows", value: "flow" },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
@@ -21,6 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   theme: "Theme",
   bot: "Bot",
   "bot-team": "Team",
+  flow: "Flow",
 };
 
 export function typeLabel(type?: string): string {
@@ -32,12 +34,18 @@ interface CountablePackage {
   widgets?: unknown[];
   providerTypes?: string[];
   team?: TeamSummary;
+  flow?: FlowSummary;
 }
 
 /** The card's count line: "3 bots", "uses gmail", "2 widgets", … */
 export function countLabel(pkg: CountablePackage): string {
   const type = pkg.type || "widget";
   if (type === "theme") return "";
+  if (type === "flow") {
+    const steps = (pkg.flow?.steps || []).length;
+    const bots = pkg.flow?.bots || 0;
+    return `${steps} step${steps !== 1 ? "s" : ""}${bots ? ` · ${bots} bot${bots !== 1 ? "s" : ""}` : ""}`;
+  }
   if (type === "bot-team") {
     const n = (pkg.team?.members || []).length;
     return `${n} bot${n !== 1 ? "s" : ""}`;
