@@ -71,6 +71,10 @@ interface Manifest {
   team?: unknown;
   // bot packages: a display summary of the bot.json in the zip.
   bot?: unknown;
+  // flow packages: a display summary of the flow.json in the zip.
+  flow?: unknown;
+  // dashboards: the flows they need, by version range.
+  flows?: unknown;
   // Remixes (lib/remixRules): whether this package may be remixed, and the
   // package this one is a remix of.
   allowRemix?: unknown;
@@ -155,6 +159,87 @@ function validateTeamSummary(team: unknown, errors: string[]): void {
   });
 }
 
+// Flows (flows PRD, phase 7). The zip carries the flow, its bots and its
+// files, which the app re-validates at install; these checks cover the
+// summary the registry stores and shows.
+const FLOW_STEP_KINDS = ["source", "bot", "check", "you"];
+const FLOW_KEY = /^[A-Za-z][A-Za-z0-9_-]{0,30}$/;
+const MAX_FLOW_STEPS = 20;
+const MAX_FLOW_FILES = 100;
+const PACKAGE_REF = /^@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/;
+const VERSION_RANGE = /^[~^]?\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?$|^\*$/;
+
+function validateFlowSummary(flow: unknown, errors: string[]): void {
+  if (!isRecord(flow) || !Array.isArray(flow.steps)) {
+    errors.push('Flow packages require "flow.steps"');
+    return;
+  }
+  if (
+    typeof flow.name !== "string" ||
+    !flow.name.trim() ||
+    flow.name.length > 100
+  ) {
+    errors.push('"flow.name" is required (at most 100 characters)');
+  }
+  const steps = flow.steps as unknown[];
+  if (steps.length === 0 || steps.length > MAX_FLOW_STEPS) {
+    errors.push(`"flow.steps" must list 1-${MAX_FLOW_STEPS} steps`);
+    return;
+  }
+  const keys = new Set<string>();
+  steps.forEach((s, i) => {
+    const prefix = `flow.steps[${i}]`;
+    if (!isRecord(s) || typeof s.key !== "string" || !FLOW_KEY.test(s.key)) {
+      errors.push(
+        `${prefix}.key must start with a letter (letters, digits, - or _)`,
+      );
+      return;
+    }
+    if (keys.has(s.key)) errors.push(`${prefix}.key "${s.key}" is a duplicate`);
+    keys.add(s.key);
+    if (typeof s.kind !== "string" || !FLOW_STEP_KINDS.includes(s.kind)) {
+      errors.push(
+        `${prefix}.kind must be one of ${FLOW_STEP_KINDS.join(", ")}`,
+      );
+    }
+    if (!validBotName(s.name)) errors.push(`${prefix}.name is required`);
+  });
+  if (flow.files !== undefined) {
+    if (
+      !Array.isArray(flow.files) ||
+      flow.files.length > MAX_FLOW_FILES ||
+      flow.files.some(
+        (f) =>
+          typeof f !== "string" ||
+          !/^(scripts|checks|data)\/[A-Za-z0-9][A-Za-z0-9._-]{0,80}$/.test(f),
+      )
+    ) {
+      errors.push('"flow.files" must list files in scripts/, checks/ or data/');
+    }
+  }
+}
+
+/** A dashboard's flows: each a scoped package and a version range. */
+function validateFlowDependencies(flows: unknown, errors: string[]): void {
+  if (!Array.isArray(flows)) {
+    errors.push('"flows" must be a list of { package, version }');
+    return;
+  }
+  flows.forEach((f, i) => {
+    if (
+      !isRecord(f) ||
+      typeof f.package !== "string" ||
+      !PACKAGE_REF.test(f.package)
+    ) {
+      errors.push(`flows[${i}].package must be a scoped package (@scope/name)`);
+      return;
+    }
+    if (typeof f.version !== "string" || !VERSION_RANGE.test(f.version)) {
+      errors.push(`flows[${i}].version must be a version range like ^1.2`);
+    }
+  });
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
@@ -196,8 +281,10 @@ export function validateManifest(manifest: Manifest): ValidationResult {
     errors.push(`"version" must be valid semver (got "${manifest.version}")`);
   }
 
-  // widgets — themes, bots and teams skip widget validation entirely
-  if (manifest.type === "bot-team") {
+  // widgets — themes, bots, teams and flows skip widget validation entirely
+  if (manifest.type === "flow") {
+    validateFlowSummary(manifest.flow, errors);
+  } else if (manifest.type === "bot-team") {
     validateTeamSummary(manifest.team, errors);
   } else if (manifest.type === "bot") {
     if (!isRecord(manifest.bot) || !validBotName(manifest.bot.name)) {
@@ -298,6 +385,10 @@ export function validateManifest(manifest: Manifest): ValidationResult {
   // summary a bot-team package carries.
   if (manifest.type === "dashboard" && manifest.team !== undefined) {
     validateTeamSummary(manifest.team, errors);
+  }
+  // The flows a dashboard needs (flows PRD, phase 7).
+  if (manifest.type === "dashboard" && manifest.flows !== undefined) {
+    validateFlowDependencies(manifest.flows, errors);
   }
 
   // appOrigin (required)
