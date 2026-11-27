@@ -34,6 +34,7 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
   bot: "bg-amber-500/10 border-amber-500/30 text-amber-400",
   "bot-team": "bg-cyan-500/10 border-cyan-500/30 text-cyan-400",
   flow: "bg-violet-500/10 border-violet-500/30 text-violet-400",
+  check: "bg-lime-500/10 border-lime-500/30 text-lime-400",
 };
 
 // Card icons for packages that have no widget icon.
@@ -42,6 +43,7 @@ const TYPE_ICONS: Record<string, string> = {
   bot: "\uD83E\uDD16",
   "bot-team": "\uD83D\uDC65",
   flow: "\uD83D\uDD00",
+  check: "\u2705",
 };
 
 export function PackageCard({ pkg }: PackageCardProps) {

@@ -16,6 +16,7 @@ describe("package types", () => {
       "Bots",
       "Teams",
       "Flows",
+      "Checks",
     ]);
     expect(TYPE_FILTERS.find((f) => f.label === "Teams")?.value).toBe(
       "bot-team",
@@ -28,6 +29,7 @@ describe("package types", () => {
     expect(typeLabel("bot-team")).toBe("Team");
     expect(typeLabel("theme")).toBe("Theme");
     expect(typeLabel("flow")).toBe("Flow");
+    expect(typeLabel("check")).toBe("Check");
     expect(typeLabel(undefined)).toBe("Widget");
   });
 
@@ -127,5 +129,23 @@ describe("dashboards with bots (US-027)", () => {
         },
       }),
     ).toBe("3 steps · 2 bots");
+  });
+});
+
+describe("check packages (DASH-106)", () => {
+  it("count line says the check's kind and what it needs", () => {
+    expect(
+      countLabel({
+        type: "check",
+        check: { kind: "file", needs: { commands: ["node"] } },
+      }),
+    ).toBe("file check · runs node");
+    expect(
+      countLabel({
+        type: "check",
+        check: { kind: "tool", needs: { provider: "jira" } },
+      }),
+    ).toBe("tool check · needs jira");
+    expect(countLabel({ type: "check" })).toBe("");
   });
 });

@@ -263,3 +263,55 @@ describe("validateManifest — flow packages", () => {
     expect(bad.valid).toBe(false);
   });
 });
+
+describe("validateManifest — check packages (DASH-106)", () => {
+  it("accepts a file check and a tool check, with no widgets", () => {
+    expect(
+      validateManifest({
+        ...base,
+        type: "check",
+        check: {
+          kind: "file",
+          inputs: [{ name: "sections", label: "Sections" }],
+          needs: { commands: ["node"] },
+        },
+      }).valid,
+    ).toBe(true);
+    expect(
+      validateManifest({
+        ...base,
+        type: "check",
+        check: { kind: "tool", needs: { provider: "jira" } },
+      }).valid,
+    ).toBe(true);
+  });
+
+  it("refuses a check with no kind, a bad input, or a tool with no provider", () => {
+    const errs = (check: unknown) =>
+      validateManifest({ ...base, type: "check", check } as never).errors.join(
+        " ",
+      );
+    expect(errs(undefined)).toMatch(/check\.kind/);
+    expect(errs({ kind: "file", inputs: [{ name: "1bad" }] })).toMatch(
+      /check\.inputs\[0\]\.name/,
+    );
+    expect(errs({ kind: "tool" })).toMatch(/check\.needs\.provider/);
+  });
+
+  it("a team lists its check packages as @scope/name", () => {
+    const ok = validateManifest({
+      ...base,
+      type: "bot-team",
+      team,
+      checkPackages: ["@trops/plan-lint"],
+    });
+    expect(ok.valid).toBe(true);
+    const bad = validateManifest({
+      ...base,
+      type: "bot-team",
+      team,
+      checkPackages: ["plan-lint"],
+    });
+    expect(bad.errors.join(" ")).toMatch(/checkPackages/);
+  });
+});

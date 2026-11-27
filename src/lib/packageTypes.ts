@@ -4,7 +4,7 @@
  * (bot-factory US-026, bot-teams TEAM-006) sit beside widgets, dashboards
  * and themes.
  */
-import type { FlowSummary, TeamSummary } from "@/lib/registry";
+import type { CheckSummary, FlowSummary, TeamSummary } from "@/lib/registry";
 
 export const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
   { label: "All", value: null },
@@ -14,6 +14,7 @@ export const TYPE_FILTERS: Array<{ label: string; value: string | null }> = [
   { label: "Bots", value: "bot" },
   { label: "Teams", value: "bot-team" },
   { label: "Flows", value: "flow" },
+  { label: "Checks", value: "check" },
 ];
 
 const TYPE_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   bot: "Bot",
   "bot-team": "Team",
   flow: "Flow",
+  check: "Check",
 };
 
 export function typeLabel(type?: string): string {
@@ -35,12 +37,25 @@ interface CountablePackage {
   providerTypes?: string[];
   team?: TeamSummary;
   flow?: FlowSummary;
+  check?: CheckSummary;
 }
 
 /** The card's count line: "3 bots", "uses gmail", "2 widgets", … */
 export function countLabel(pkg: CountablePackage): string {
   const type = pkg.type || "widget";
   if (type === "theme") return "";
+  // A check package (DASH-106): what kind of check, and what it needs.
+  if (type === "check") {
+    const c = pkg.check;
+    if (!c) return "";
+    const kind = c.kind === "tool" ? "tool check" : "file check";
+    const needs = c.needs?.provider
+      ? `needs ${c.needs.provider}`
+      : (c.needs?.commands || []).length
+        ? `runs ${(c.needs?.commands || []).join(", ")}`
+        : "";
+    return needs ? `${kind} · ${needs}` : kind;
+  }
   if (type === "flow") {
     const steps = (pkg.flow?.steps || []).length;
     const bots = pkg.flow?.bots || 0;
