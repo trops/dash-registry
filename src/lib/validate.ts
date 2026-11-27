@@ -73,6 +73,10 @@ interface Manifest {
   bot?: unknown;
   // flow packages: a display summary of the flow.json in the zip.
   flow?: unknown;
+  // check packages (DASH-106): a display summary of the check.json in the zip.
+  check?: unknown;
+  // teams (DASH-106): the check packages their checks use.
+  checkPackages?: unknown;
   // dashboards: the flows they need, by version range.
   flows?: unknown;
   // Remixes (lib/remixRules): whether this package may be remixed, and the
@@ -168,6 +172,79 @@ const MAX_FLOW_STEPS = 20;
 const MAX_FLOW_FILES = 100;
 const PACKAGE_REF = /^@[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/;
 const VERSION_RANGE = /^[~^]?\d+(\.\d+){0,2}(-[0-9A-Za-z.-]+)?$|^\*$/;
+
+// Check packages (DASH-106). The zip's check.json is the real definition,
+// re-validated by the app at install; this covers the summary shown here.
+const CHECK_INPUT = /^[A-Za-z][A-Za-z0-9_]{0,39}$/;
+const CHECK_REF = /^@[a-z0-9][a-z0-9._-]{0,63}\/[a-z0-9][a-z0-9._-]{0,63}$/;
+const MAX_CHECK_INPUTS = 12;
+const MAX_CHECK_PACKAGES = 50;
+
+function validateCheckSummary(check: unknown, errors: string[]): void {
+  if (!isRecord(check) || (check.kind !== "file" && check.kind !== "tool")) {
+    errors.push('Check packages require "check.kind" ("file" or "tool")');
+    return;
+  }
+  if (check.inputs !== undefined) {
+    if (
+      !Array.isArray(check.inputs) ||
+      check.inputs.length > MAX_CHECK_INPUTS
+    ) {
+      errors.push(
+        `"check.inputs" must be a list of at most ${MAX_CHECK_INPUTS} inputs`,
+      );
+    } else {
+      (check.inputs as unknown[]).forEach((i, n) => {
+        if (
+          !isRecord(i) ||
+          typeof i.name !== "string" ||
+          !CHECK_INPUT.test(i.name)
+        ) {
+          errors.push(
+            `check.inputs[${n}].name must be letters, digits and _, starting with a letter`,
+          );
+        }
+      });
+    }
+  }
+  const needs = check.needs;
+  if (needs !== undefined && !isRecord(needs)) {
+    errors.push('"check.needs" must be an object');
+  } else if (isRecord(needs)) {
+    if (
+      needs.provider !== undefined &&
+      (typeof needs.provider !== "string" || needs.provider.length > 40)
+    ) {
+      errors.push('"check.needs.provider" must be a provider type');
+    }
+    if (
+      needs.commands !== undefined &&
+      (!Array.isArray(needs.commands) ||
+        needs.commands.length > 10 ||
+        needs.commands.some((c) => typeof c !== "string" || c.length > 40))
+    ) {
+      errors.push('"check.needs.commands" must list at most 10 commands');
+    }
+  }
+  if (check.kind === "tool" && !(isRecord(needs) && needs.provider)) {
+    errors.push(
+      'A tool check names the provider type it needs in "check.needs.provider"',
+    );
+  }
+}
+
+function validateCheckPackages(refs: unknown, errors: string[]): void {
+  if (refs === undefined) return;
+  if (
+    !Array.isArray(refs) ||
+    refs.length > MAX_CHECK_PACKAGES ||
+    refs.some((r) => typeof r !== "string" || !CHECK_REF.test(r))
+  ) {
+    errors.push(
+      `"checkPackages" must list at most ${MAX_CHECK_PACKAGES} check packages as "@scope/name"`,
+    );
+  }
+}
 
 function validateFlowSummary(flow: unknown, errors: string[]): void {
   if (!isRecord(flow) || !Array.isArray(flow.steps)) {
@@ -284,8 +361,11 @@ export function validateManifest(manifest: Manifest): ValidationResult {
   // widgets — themes, bots, teams and flows skip widget validation entirely
   if (manifest.type === "flow") {
     validateFlowSummary(manifest.flow, errors);
+  } else if (manifest.type === "check") {
+    validateCheckSummary(manifest.check, errors);
   } else if (manifest.type === "bot-team") {
     validateTeamSummary(manifest.team, errors);
+    validateCheckPackages(manifest.checkPackages, errors);
   } else if (manifest.type === "bot") {
     if (!isRecord(manifest.bot) || !validBotName(manifest.bot.name)) {
       errors.push(

@@ -422,6 +422,60 @@ export default function PackageDetailPage({
         </div>
       )}
 
+      {/* A check package (DASH-106): its kind, inputs and what it needs */}
+      {pkg.type === "check" && pkg.check && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4">The check</h2>
+          <p className="text-sm text-dash-muted mb-3">
+            {pkg.check.kind === "tool"
+              ? `A tool check: it asks a ${pkg.check.needs?.provider || ""} provider, read-only, and checks the answer.`
+              : "A file check: it runs in the job's workspace, with no AI. Dash shows you its code before it can run on your computer."}
+          </p>
+          {pkg.check.needs?.commands && pkg.check.needs.commands.length > 0 && (
+            <p className="text-sm text-dash-muted mb-3">
+              Runs: {pkg.check.needs.commands.join(", ")}
+            </p>
+          )}
+          {pkg.check.inputs && pkg.check.inputs.length > 0 && (
+            <ul className="space-y-2">
+              {pkg.check.inputs.map((i) => (
+                <li
+                  key={i.name}
+                  className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white"
+                >
+                  {i.label || i.name}{" "}
+                  <span className="text-dash-muted">({i.name})</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* The check packages a team uses (DASH-106): installed with it */}
+      {pkg.type === "bot-team" &&
+        pkg.checkPackages &&
+        pkg.checkPackages.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-3">
+              Check packages it uses
+            </h2>
+            <p className="text-sm text-dash-muted mb-3">
+              Installed with the team, and off until you turn them on.
+            </p>
+            <ul className="space-y-2">
+              {pkg.checkPackages.map((ref) => (
+                <li
+                  key={ref}
+                  className="p-3 rounded-lg bg-dash-surface border border-dash-border text-sm text-white"
+                >
+                  {ref}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
       {/* The flows a dashboard needs */}
       {pkg.type === "dashboard" && pkg.flows && pkg.flows.length > 0 && (
         <div className="mb-8">

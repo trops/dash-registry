@@ -404,6 +404,13 @@ export async function POST(request: NextRequest) {
     if (manifest.type === "flow" && manifest.flow) {
       packageRecord.flow = manifest.flow;
     }
+    // Check packages and the teams that use them (DASH-106).
+    if (manifest.type === "check" && manifest.check) {
+      packageRecord.check = manifest.check;
+    }
+    if (manifest.type === "bot-team" && Array.isArray(manifest.checkPackages)) {
+      packageRecord.checkPackages = manifest.checkPackages;
+    }
     if (manifest.type === "dashboard" && Array.isArray(manifest.flows)) {
       packageRecord.flows = manifest.flows;
     }
@@ -434,6 +441,12 @@ export async function POST(request: NextRequest) {
     }
     if (manifest.type === "flow" && manifest.flow) {
       versionRecord.flow = manifest.flow;
+    }
+    if (manifest.type === "check" && manifest.check) {
+      versionRecord.check = manifest.check;
+    }
+    if (manifest.type === "bot-team" && Array.isArray(manifest.checkPackages)) {
+      versionRecord.checkPackages = manifest.checkPackages;
     }
     if (manifest.type === "dashboard" && Array.isArray(manifest.flows)) {
       versionRecord.flows = manifest.flows;
