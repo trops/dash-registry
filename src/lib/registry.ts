@@ -5,6 +5,13 @@
  * packages were migrated to DynamoDB.
  */
 
+/** A check package's summary (DASH-106): what the card and page show. */
+export interface CheckSummary {
+  kind: "file" | "tool";
+  inputs?: Array<{ name: string; label?: string }>;
+  needs?: { commands?: string[]; provider?: string };
+}
+
 export interface WidgetProvider {
   type: string;
   required: boolean;
@@ -81,6 +88,10 @@ export interface Package {
   flow?: FlowSummary;
   /** dashboards: the flows they need, by version range. */
   flows?: FlowDependency[];
+  /** check packages (DASH-106): the check's kind, inputs and needs. */
+  check?: CheckSummary;
+  /** teams (DASH-106): the check packages its checks use ("@scope/name"). */
+  checkPackages?: string[];
   theme?: {
     key?: string;
     name?: string;
